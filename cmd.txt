@@ -1,0 +1,5 @@
+ls -l /dev/ttyUSB*
+sudo chmod 777 /dev/ttyUSB0
+sudo chmod 777 /dev/ttyUSB1
+
+./gps_car /dev/ttyUSB0 /dev/ttyUSB1

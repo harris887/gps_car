@@ -1,0 +1,74 @@
+DEMO_01_PARAM* DEMO_01_Init(double lati_m, double longti_m, double yaw)
+{
+  DEMO_01_PARAM* demo = (DEMO_01_PARAM*) malloc(sizeof(DEMO_01_PARAM));
+  if(demo != NULL)
+  {
+    double default_diff_angle = 15.0;
+    double default_run_distance = 5.0;
+    double line_segment_angle;
+    double vertical_line_angle;
+    COORDINATE_PARAM* coo_base = Coordinate_Init(lati_m, longti_m);
+    line_segment_angle = (90.0d - (yaw - coo_base->yaw_offset)) + default_diff_angle;
+    vertical_line_angle = line_segment_angle - 90.0;
+    LINE_SEGMENT_PARAM* line = Creat_LineSegment(0.0, 0.0, line_segment_angle, default_run_distance);
+    COORDINATE* point = (COORDINATE*) malloc(sizeof(COORDINATE));
+    point->x = 0.0;
+    point->y = 0.0;
+    point->direction = 0.0;
+
+    demo->coo = coo_base;
+    demo->line = line;
+    demo->current_location = point;
+    demo->vertical_line_k = tan(vertical_line_angle * (PI / 180.0));
+    demo->vertical_line_b = 0;
+
+    demo->max_wheel_speed = MAX_WHEEL_SPEED_MMS * 0.001; 
+    demo->left_speed = 0;
+    demo->right_speed = 0;
+    demo->acceleration = MAX_WHEEL_ACCELERATION_MMSS * 0.001; 
+    demo->brake_distance = (demo->max_wheel_speed / demo->acceleration) * demo->max_wheel_speed * 0.5;
+    demo->run_distance = 0;
+    demo->expected_speed = demo->max_wheel_speed;
+    demo->car_speed = 0;
+
+    printf("yaw = %lf, line_segment_angle = %lf, vertical_line_angle = %lf \r\n", yaw, line_segment_angle, vertical_line_angle);
+    printf("start_X = %lf, start_Y = %lf , Length = %lf \r\n", line->start_x, line->start_y, line->length);
+    printf("destination_X = %lf, destination_Y = %lf \r\n", line->end_x, line->end_y);
+    printf("y = kx + b : k = %lf, b = %lf \r\n", line->k, line->b);
+    printf("brake_distance = %lf \r\n", demo->brake_distance);
+     	
+    //---- PID系数 ----//
+    demo->P = 1.0;
+    demo->I = 0.01;
+    demo->D = 0.01;
+    demo->error = 0.0;
+    demo->last_error = 0.0;
+    demo->error_sum = 0.0;
+    demo->max_error_sum =  10.0;
+    demo->min_error_sum = -10.0;
+    demo->max_error = 2.0; //[车体]到[既定路线]的距离最大为2米，大于这个值后立即停车
+    demo->max_diff_rate = 0.2;
+
+    //---- ----//
+    demo->error_flag = 0;
+
+  }
+  return demo;
+}
+
+
+LINE_SEGMENT_PARAM* Creat_LineSegment(double start_x, double start_y, double direction_degree, double length)
+{
+  LINE_SEGMENT_PARAM* line = malloc(sizeof(LINE_SEGMENT_PARAM));
+  if(line != NULL)
+  {
+    line->start_x = start_x;
+    line->start_y = start_y;
+    line->k = tan(direction_degree*(PI/180.0));
+    line->b = start_y - (line->k * start_x);
+    line->end_x = start_x + length * cos(direction_degree*(PI/180.0));
+    line->end_y = start_y + length * sin(direction_degree*(PI/180.0));
+    line->length = length;
+  }
+  return line;
+}
