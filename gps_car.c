@@ -55,7 +55,7 @@ int main(int argc, char **argv)
 	int err;                                        //返回调用函数的状态 
   int comm_init_retry_num ; 
 
-#if(1) //
+#if(0) //
   printf("MOD_BUS_REG_NUM = %d\n", (int)MOD_BUS_REG_NUM);
   return 0;
 
@@ -79,6 +79,7 @@ int main(int argc, char **argv)
 	{ 
 		//printf("echo loopback test! \n"); 
 		printf("Usage: %s gps_com moto_com radio_com [0:un_log, 1:log]\n",argv[0]); //  /dev/ttyUSB*
+    printf("EX: ./gps_car /dev/ttyUSB0 /dev/ttyUSB1 /dev/ttyUSB2 0\n");
 		return FALSE;  
 	} 
   if(argc >= (log_option + 1))
@@ -142,6 +143,7 @@ int main(int argc, char **argv)
   }
 #endif
 
+  LoadModbusReg();
   timer_init();
 
 	//printf("BLOCK_STOP_MODE = %d\n", BLOCK_STOP_MODE);

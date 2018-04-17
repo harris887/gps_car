@@ -101,5 +101,6 @@ extern MOD_BUS_REG MOD_BUS_Reg;
 
 extern void Analysis_Receive_From_Master(u8 data, MODBUS* A8_Modbus, MOD_BUS_REG* MOD_BUS_Reg, int fd_radio);
 extern u16 ModBus_CRC16_Calculate(u8 *aStr , u8 alen);
+extern int LoadModbusReg(void);
 #endif
 

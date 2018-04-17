@@ -1,22 +1,44 @@
 #include "modbus.h"
 #include "uart.h"
+#include "string.h"
 
 
+MOD_BUS_REG MOD_BUS_Reg;
+MOD_BUS_REG MOD_BUS_Reg_Backup;
 
-MOD_BUS_REG MOD_BUS_Reg = {
+/*默认值*/
+const MOD_BUS_REG DEFAULT_MOD_BUS_Reg=
+{
   .rsv_000 = 0,
   .SLAVE_ADDR = 1,
   .COMM_BD = 4,
-  .MOD_REG_MAGIC_WORD = MAGIC_WORD,
-};
-MOD_BUS_REG MOD_BUS_Reg_Backup;
 
-const MOD_BUS_REG DEFAULT_MOD_BUS_Reg=
-{
-  0,
-  1, //8
-  4,
-  MAGIC_WORD,
+  //-- 0x20 ~ 0x3F--//
+  .VEHICLE_CONTROL = 0, 
+  .ORIGIN_LONGTI = {0x3f80, 0x0000},//1.0f
+  .ORIGIN_LATI = {0x3faa,0xaa8f},   //1.3333f
+
+  //-- 0x40 ~ 0x4F--//
+  .VEHICLE_STATUS = 0,
+  .BATT_VOLT = 480,
+  .MOTO_CURRENT = {0, 10, 20, 30},
+
+  //-- 0x50 ~ 0x1FF--//
+  .VEHICLE_LOCATION_X = 0,
+  .VEHICLE_LOCATION_Y = 1,
+  .VEHICLE_LOCATION_YAW = 180,
+  .VEHICLE_SPEED = 0,
+  .VEHICLE_LONGTI = {0x4006, 0x6666}, //2.1f
+  .VEHICLE_LATI = {0x404c, 0xcccd},   //3.2f
+  .VEHICLE_YAW = {0x4270, 0x0000},    //60.0
+  .GPS_LOCATION_QUALITY = 4,
+  .GPS_YAW_QUALITY = 3,
+
+  //-- 0x200 ~ 0x21F--//
+  .MAP_NUM = 0,
+  .MAP_INDEX = 0,
+
+  .MOD_REG_MAGIC_WORD = MAGIC_WORD
 };
 
 MODBUS MODBUS_Radio = {0};
@@ -27,6 +49,13 @@ u8 AckModBusFunctionError(u8 CMD_ModBus, int fd_radio);
 u8 AckModBusReadReg(u16 reg_addr, u16 reg_num, int fd_radio);
 u8 AckModBusWriteOneReg(u16 reg_addr,u16 reg_value, int fd_radio);
 u8 AckModBusWriteMultiReg(u16 reg_addr, u16 reg_num, u8* pData, int fd_radio);
+
+int LoadModbusReg(void)
+{
+
+  memcpy(&MOD_BUS_Reg, &DEFAULT_MOD_BUS_Reg, sizeof(MOD_BUS_REG));
+  return 0;
+}
 
 void Analysis_Receive_From_Master(u8 data, MODBUS* A8_Modbus, MOD_BUS_REG* MOD_BUS_Reg, int fd_radio)
 {
@@ -111,7 +140,7 @@ void Analysis_Receive_From_Master(u8 data, MODBUS* A8_Modbus, MOD_BUS_REG* MOD_B
                 A8_Modbus->machine_state = 0x08;
                 A8_Modbus->write_more_receive_timer = 0;
                 A8_Modbus->Write_Register_Addr = A8_Modbus->data[A8_Modbus->data_index-4]*256 + A8_Modbus->data[A8_Modbus->data_index-3];
-                A8_Modbus->Write_Register_Num = A8_Modbus->data[A8_Modbus->data_index-2]*256 + A8_Modbus->data[A8_Modbus->data_index-1];
+                A8_Modbus->Write_Register_Num = (A8_Modbus->data[A8_Modbus->data_index-2]*256 + A8_Modbus->data[A8_Modbus->data_index-1]) * 2;
             }			      	 
         }break;
         case 0x06: 
@@ -258,7 +287,7 @@ u8 AckModBusCrcError(u8 CMD_ModBus, int fd_radio)
   Send_Data_A8_array[index++]=cal_crc&0xFF;
   Send_Data_A8_array[index++]=cal_crc>>8;
 
-  UART0_Send(fd_radio, Send_Data_A8_array, index);
+  UART0_Send(fd_radio, (char*)Send_Data_A8_array, index);
   return 0;  
 }
 
@@ -274,7 +303,7 @@ u8 AckModBusFunctionError(u8 CMD_ModBus, int fd_radio)
   Send_Data_A8_array[index++]=cal_crc&0xff;
   Send_Data_A8_array[index++]=cal_crc>>8;
 
-  UART0_Send(fd_radio, Send_Data_A8_array, index);
+  UART0_Send(fd_radio, (char*)Send_Data_A8_array, index);
   return 0;  
 }
 
@@ -284,7 +313,7 @@ u8 AckModBusReadReg(u16 reg_addr, u16 reg_num, int fd_radio)
   u8 Send_Data_A8_array[256];
   u16 index=0;
   u16 loop;
-  if((reg_addr <= (MOD_BUS_REG_NUM - 1)) && ((reg_addr + reg_num) <= MOD_BUS_REG_NUM))
+  if((reg_addr <= (MOD_BUS_REG_NUM - 1)) && ((reg_addr + reg_num) <= MOD_BUS_REG_NUM) && (reg_num <= 32))
   {
     u16* pBuf = (u16*)(&MOD_BUS_Reg) + reg_addr;
     u16 cal_crc;
@@ -302,7 +331,7 @@ u8 AckModBusReadReg(u16 reg_addr, u16 reg_num, int fd_radio)
     Send_Data_A8_array[index++]=cal_crc&0xFF;
     Send_Data_A8_array[index++]=cal_crc>>8;
 
-    UART0_Send(fd_radio, Send_Data_A8_array, index);
+    UART0_Send(fd_radio, (char*)Send_Data_A8_array, index);
     return 1;
   }
   else
@@ -315,7 +344,7 @@ u8 AckModBusReadReg(u16 reg_addr, u16 reg_num, int fd_radio)
     Send_Data_A8_array[index++]=cal_crc&0xFF;
     Send_Data_A8_array[index++]=cal_crc>>8;
 
-    UART0_Send(fd_radio, Send_Data_A8_array, index);
+    UART0_Send(fd_radio, (char*)Send_Data_A8_array, index);
   }
   return 0;
 }
@@ -327,6 +356,8 @@ u8 AckModBusWriteOneReg(u16 reg_addr,u16 reg_value, int fd_radio)
   u16 index=0;
   u8 return_code=return_OK;
   u16 cal_crc;
+
+#if (0)
   switch(reg_addr)
   { 
   case 0x02://设置波特率
@@ -356,7 +387,19 @@ u8 AckModBusWriteOneReg(u16 reg_addr,u16 reg_value, int fd_radio)
   default:
     return_code=illegal_register;
   }
-  
+#else
+  if(reg_addr <= (MOD_BUS_REG_NUM - 1))
+  {
+    u16* pBuf = (u16*)(&MOD_BUS_Reg) + reg_addr;
+    *pBuf = reg_value;
+    MOD_BUS_REG_FreshFlag=1;
+    return_code=return_OK;
+  }
+  else
+  {
+    return_code=illegal_register;
+  }
+#endif
   //回复用户
   Send_Data_A8_array[index++]=MOD_BUS_Reg.SLAVE_ADDR;
   Send_Data_A8_array[index++]=CMD_ModBus_Write;
@@ -365,7 +408,7 @@ u8 AckModBusWriteOneReg(u16 reg_addr,u16 reg_value, int fd_radio)
   Send_Data_A8_array[index++]=cal_crc&0xff;
   Send_Data_A8_array[index++]=cal_crc>>8;
 
-  UART0_Send(fd_radio, Send_Data_A8_array, index);
+  UART0_Send(fd_radio, (char*)Send_Data_A8_array, index);
   return 0;    
 }
 
@@ -374,7 +417,8 @@ u8 AckModBusWriteMultiReg(u16 reg_addr, u16 reg_num, u8* pData, int fd_radio)
   u8 Send_Data_A8_array[256];
   u16 index=0;
   u8 return_code=return_OK;  
-  u16 cal_crc;
+  u16 cal_crc, loop;
+#if (0)
   switch(reg_addr)
   {
   case 0x30:
@@ -392,6 +436,23 @@ u8 AckModBusWriteMultiReg(u16 reg_addr, u16 reg_num, u8* pData, int fd_radio)
   default:
     return_code=illegal_register;
   }
+#else
+  if((reg_addr <= (MOD_BUS_REG_NUM - 1)) && ((reg_addr + reg_num) <= MOD_BUS_REG_NUM) && (reg_num <= 32))
+  {
+    u16* pBuf = (u16*)(&MOD_BUS_Reg) + reg_addr;
+    for(loop = 0; loop < reg_num; loop++)
+    {
+      pBuf[loop] = ((u16)pData[loop*2] << 8) | ((u16)pData[loop*2 + 1] << 0);
+    }
+    
+    MOD_BUS_REG_FreshFlag=1;
+    return_code=return_OK;
+  }
+  else
+  {
+    return_code=illegal_register;
+  }
+#endif
   
   //回复用户
   Send_Data_A8_array[index++]=MOD_BUS_Reg.SLAVE_ADDR;
@@ -401,7 +462,7 @@ u8 AckModBusWriteMultiReg(u16 reg_addr, u16 reg_num, u8* pData, int fd_radio)
   Send_Data_A8_array[index++]=cal_crc&0xff;
   Send_Data_A8_array[index++]=cal_crc>>8;
   
-  UART0_Send(fd_radio, Send_Data_A8_array, index);
+  UART0_Send(fd_radio, (char*)Send_Data_A8_array, index);
   return 0;      
 }
 

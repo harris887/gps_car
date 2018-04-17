@@ -475,7 +475,7 @@ void SetMotoSpeed(int fd_car, int left, int right)
   cmd_buf[12+offset] = (right >> 8) & 0xFF;
   cmd_buf[13+offset] = (right >> 0) & 0xFF;
 
-  cal_crc = ModBus_CRC16_Calculate(cmd_buf , sizeof(CMD_SET_MOTO_SPEED) - 2);
+  cal_crc = ModBus_CRC16_Calculate((u8*)cmd_buf , sizeof(CMD_SET_MOTO_SPEED) - 2);
   cmd_buf[22] = cal_crc&0xFF;
   cmd_buf[23] = cal_crc>>8;   
 
