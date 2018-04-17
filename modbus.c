@@ -1,10 +1,10 @@
 #include "modbus.h"
 #include "uart.h"
 
-#define MOD_BUS_REG_NUM ((sizeof(MOD_BUS_REG) >> 1) - 1)
+
 
 MOD_BUS_REG MOD_BUS_Reg = {
-  .rsv_0000 = 0,
+  .rsv_000 = 0,
   .SLAVE_ADDR = 1,
   .COMM_BD = 4,
   .MOD_REG_MAGIC_WORD = MAGIC_WORD,

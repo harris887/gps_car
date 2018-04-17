@@ -17,6 +17,7 @@
 #include "demo_03.h"
 #include "config.h"
 #include "log.h"
+#include "modbus.h"
 
 typedef enum
 {
@@ -54,7 +55,10 @@ int main(int argc, char **argv)
 	int err;                                        //返回调用函数的状态 
   int comm_init_retry_num ; 
 
-#if(0) //
+#if(1) //
+  printf("MOD_BUS_REG_NUM = %d\n", (int)MOD_BUS_REG_NUM);
+  return 0;
+
   for(int i = 0; i < 360; i++)
   {
     printf("yaw = %d, rad = %lf \r\n", i, YAW2DIR(i));

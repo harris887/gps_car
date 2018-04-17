@@ -1,4 +1,4 @@
-#ifndef _modbus_h_
+           #ifndef _modbus_h_
 #define _modbus_h_
 
 typedef unsigned char  u8;
@@ -50,23 +50,27 @@ typedef struct
 
 typedef struct
 {
+  //-- 0x0 ~ 0x1F--//
   u16 rsv_000;
   u16 SLAVE_ADDR;
   u16 COMM_BD;
   u16 rsv_001[29];
 
+  //-- 0x20 ~ 0x3F--//
   u16 VEHICLE_CONTROL;
   u16 rsv_002[7];
   u16 ORIGIN_LONGTI[2];
   u16 ORIGIN_LATI[2];
   u16 rsv_003[20];
 
+  //-- 0x40 ~ 0x4F--//
   u16 VEHICLE_STATUS;
   u16 BATT_VOLT;
   u16 rsv_004[6];
   u16 MOTO_CURRENT[4];
   u16 rsv_005[4];
 
+  //-- 0x50 ~ 0x1FF--//
   s16 VEHICLE_LOCATION_X;
   s16 VEHICLE_LOCATION_Y;
   s16 VEHICLE_LOCATION_YAW;
@@ -76,7 +80,7 @@ typedef struct
   u16 VEHICLE_YAW[2];
   u16 GPS_LOCATION_QUALITY;
   u16 GPS_YAW_QUALITY;
-  u16 rsv_006[522];
+  u16 rsv_006[420];
 
   //-- 0x200 ~ 0x21F--//
   u16 MAP_NUM;
@@ -89,6 +93,8 @@ typedef struct
 
   u16 MOD_REG_MAGIC_WORD;
 }MOD_BUS_REG;
+
+#define MOD_BUS_REG_NUM ((sizeof(MOD_BUS_REG) >> 1) - 1)
 
 extern MODBUS MODBUS_Radio;
 extern MOD_BUS_REG MOD_BUS_Reg;
