@@ -19,20 +19,20 @@ extern void SetMotoSpeed(int fd_car, int left, int right);
 
 
 int interval_ms;
-long pg_start_timestamp;
-long pg_end_timestamp;
-static long ms_init;
+s64 pg_start_timestamp;
+s64 pg_end_timestamp;
+static s64 ms_init;
 int system_time_in_sec = 0;
 int PID_Flag = 0;
 
 //---- 获取系统当前时间戳(单位：ms) ----//
-long GetCurrentTimeMs(void)
+s64 GetCurrentTimeMs(void)
 {
-  long ms;
+  s64 ms;
   struct timeval tv;
   struct timezone tz;
   gettimeofday(&tv, &tz);
-  ms = ((tv.tv_sec*1000) + (tv.tv_usec/1000));
+  ms = (((s64)tv.tv_sec*(s64)1000) + ((s64)tv.tv_usec/(s64)1000));
   return ms;
 }
 
@@ -43,7 +43,7 @@ void Get_MainLoopStartTime(void)
 
 void* Get_MainLoopTotalTime(void)
 {
-  static long total_ms;
+  static s64 total_ms;
   pg_end_timestamp = GetCurrentTimeMs();
   total_ms = (pg_end_timestamp - pg_start_timestamp);
   //printf("\nTotal Test Time = %.3lf s\n", (double)(pg_end_timestamp - pg_start_timestamp) * 0.001d);
@@ -57,12 +57,12 @@ void timer_init(void)
 
 void timer_check(void)
 {
-  static long n_100ms_bk = 0;
-  long ms = GetCurrentTimeMs();
+  static s64 n_100ms_bk = 0;
+  s64 ms = GetCurrentTimeMs();
 
   system_time_in_sec = (ms - ms_init) / 1000;
 
-  long n_100ms = (ms - ms_init) / 100;
+  s64 n_100ms = (ms - ms_init) / 100;
   if(n_100ms_bk != n_100ms)
   {
     n_100ms_bk = n_100ms;
@@ -76,7 +76,7 @@ void timer_check(void)
 //---- 坐标系初始化 ----//
 COORDINATE_PARAM* Coordinate_Init(double lati_m, double longti_m)
 {
-  COORDINATE_PARAM* coo = malloc(sizeof(COORDINATE_PARAM));
+  COORDINATE_PARAM* coo = (COORDINATE_PARAM*) malloc(sizeof(COORDINATE_PARAM));
   if(coo != NULL)
   {
     coo->origin_latitude = lati_m;
@@ -120,7 +120,7 @@ void Get_Coordinate(COORDINATE* co, double lati_m, double longti_m, double yaw, 
 
 LINE_SEGMENT_PARAM* Creat_LineSegment(double start_x, double start_y, double end_x, double end_y)
 {
-  LINE_SEGMENT_PARAM* line = malloc(sizeof(LINE_SEGMENT_PARAM));
+  LINE_SEGMENT_PARAM* line = (LINE_SEGMENT_PARAM*) malloc(sizeof(LINE_SEGMENT_PARAM));
   if(line != NULL)
   {
     line->start_x = start_x;

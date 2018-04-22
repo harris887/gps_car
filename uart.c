@@ -349,12 +349,12 @@ int UART0_Send(int fd, char *send_buf,int data_len)
 //---- 串口接收任务 ----//
 int UART0_RX_Task(int fd)  
 {  
-	#if (!BLOCK_STOP_MODE)
-  static long time_bk = 0;
-  static long last_rx_timestamp = 0;
+#if (!BLOCK_STOP_MODE)
+  static s64 time_bk = 0;
+  static s64 last_rx_timestamp = 0;
   static unsigned char ack_buf[256];
   static unsigned char ack_bytes;
-  long time;
+  s64 time;
   if(fd == 0) return -1;  
 
   time = GetCurrentTimeMs();
@@ -406,9 +406,9 @@ int UART0_RX_Task(int fd)
 //---- modbus接收 ----//
 int MODBUS_UART_RX_Task(int fd)  
 {  
-  static long time_bk = 0;
-  static long last_rx_timestamp = 0;
-  long time;
+  static s64 time_bk = 0;
+  static s64 last_rx_timestamp = 0;
+  s64 time;
   int i;
   if(fd == 0) return -1;  
 

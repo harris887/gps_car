@@ -19,7 +19,12 @@
 //---------------------//
 extern int system_time_in_sec;
 
-long GetCurrentTimeMs(void);
+//typedef unsigned long long  u64;
+//typedef signed long long    s64;
+typedef unsigned long  u64;
+typedef signed long    s64;
+
+s64 GetCurrentTimeMs(void);
 void Get_MainLoopStartTime(void);
 void* Get_MainLoopTotalTime(void);
 void timer_init(void);

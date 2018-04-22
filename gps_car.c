@@ -30,18 +30,7 @@ typedef enum
 }PARAM; 
 
 
-void* Load_CmdList(const char* url);
-int UART0_RX_Task(int fd);
-int Remove_CompeleteFrame(char* base, int* base_len, char* frame, int frame_len, long time);
-int Flush_InCompleteFrame(char* base, int* base_len, long time);
-#define IN_COMPELETE_BUF_SIZE (1024*1024*16)
-char InCompleteFrame[IN_COMPELETE_BUF_SIZE+1024];
-int InCompleteFrameIndex = 0;
-//-- 01 06 00 02 00 04 29 C9  -9600
-//-- 01 06 00 02 00 05 E8 09  -19200 
-//-- 01 06 00 02 00 06 A8 08  -38400
-//-- 01 06 00 02 00 07 69 C8  -57600
-//-- 01 06 00 02 00 08 29 CC  -115200
+
 int main(int argc, char **argv)  
 {  
   FILE* log = NULL;
@@ -54,6 +43,7 @@ int main(int argc, char **argv)
   int fd_gps = 0, fd_car = 0, fd_radio = 0;                                         //文件描述符  
 	int err;                                        //返回调用函数的状态 
   int comm_init_retry_num ; 
+  printf("sizeof long = %ld, %ld, %ld\r\n", sizeof(s64), sizeof(u64), sizeof(s32));
 
 #if(0) //
   printf("MOD_BUS_REG_NUM = %d\n", (int)MOD_BUS_REG_NUM);
@@ -162,6 +152,7 @@ int main(int argc, char **argv)
   //-------------------------------------------------------------//
   while(loop_flag)
   {
+    int i;
     static int sec_bk = 0;
     timer_check();
     keyboard_char = get_char();
@@ -170,8 +161,9 @@ int main(int argc, char **argv)
 #else
     UART0_RX_Task(fd_gps);
     MODBUS_UART_RX_Task(fd_radio);
+    Radio_Send_Task();
     //---- parse NMEA ----//
-    for(int i=0;i<NMEA_R_BUF_LEN;i++)
+    for(i=0;i<NMEA_R_BUF_LEN;i++)
     {
       if(NMEA_R_BUF[i].Flag==2)
       {

@@ -1,8 +1,10 @@
 #include "modbus.h"
 #include "uart.h"
 #include "string.h"
+#include "stdio.h"
+#include "misc.h"
 
-
+#define RADIO_ACK_DELAY_MS	30
 MOD_BUS_REG MOD_BUS_Reg;
 MOD_BUS_REG MOD_BUS_Reg_Backup;
 
@@ -38,7 +40,7 @@ const MOD_BUS_REG DEFAULT_MOD_BUS_Reg=
   .MAP_NUM = 0,
   .MAP_INDEX = 0,
 
-  .MOD_REG_MAGIC_WORD = MAGIC_WORD
+  .MOD_REG_MAGIC_WORD = MAGIC_WORD,
 };
 
 MODBUS MODBUS_Radio = {0};
@@ -49,6 +51,23 @@ u8 AckModBusFunctionError(u8 CMD_ModBus, int fd_radio);
 u8 AckModBusReadReg(u16 reg_addr, u16 reg_num, int fd_radio);
 u8 AckModBusWriteOneReg(u16 reg_addr,u16 reg_value, int fd_radio);
 u8 AckModBusWriteMultiReg(u16 reg_addr, u16 reg_num, u8* pData, int fd_radio);
+
+//--------------------------------------//
+typedef struct
+{ 
+  int fd;
+  u8 data[256];
+  u8 data_len;
+  s64 delay_ms;
+  s64 timestamp;
+}RADIO_INFOR_CONTENT;  
+
+#define RADIO_INFOR_CONTENT_LIST_NUM	 16
+#define RADIO_INFOR_CONTENT_LIST_NUM_MASK (RADIO_INFOR_CONTENT_LIST_NUM - 1) 
+RADIO_INFOR_CONTENT RADIO_INFOR_CONTENT_List[RADIO_INFOR_CONTENT_LIST_NUM]; 
+int RADIO_INFOR_CONTENT_LIST_InIndex = 0;
+int RADIO_INFOR_CONTENT_LIST_OutIndex = 0;
+//--------------------------------------//
 
 int LoadModbusReg(void)
 {
@@ -287,7 +306,7 @@ u8 AckModBusCrcError(u8 CMD_ModBus, int fd_radio)
   Send_Data_A8_array[index++]=cal_crc&0xFF;
   Send_Data_A8_array[index++]=cal_crc>>8;
 
-  UART0_Send(fd_radio, (char*)Send_Data_A8_array, index);
+  Radio_Send(fd_radio, (char*)Send_Data_A8_array, index, RADIO_ACK_DELAY_MS);
   return 0;  
 }
 
@@ -303,7 +322,7 @@ u8 AckModBusFunctionError(u8 CMD_ModBus, int fd_radio)
   Send_Data_A8_array[index++]=cal_crc&0xff;
   Send_Data_A8_array[index++]=cal_crc>>8;
 
-  UART0_Send(fd_radio, (char*)Send_Data_A8_array, index);
+  Radio_Send(fd_radio, (char*)Send_Data_A8_array, index, RADIO_ACK_DELAY_MS);
   return 0;  
 }
 
@@ -331,7 +350,7 @@ u8 AckModBusReadReg(u16 reg_addr, u16 reg_num, int fd_radio)
     Send_Data_A8_array[index++]=cal_crc&0xFF;
     Send_Data_A8_array[index++]=cal_crc>>8;
 
-    UART0_Send(fd_radio, (char*)Send_Data_A8_array, index);
+    Radio_Send(fd_radio, (char*)Send_Data_A8_array, index, RADIO_ACK_DELAY_MS);
     return 1;
   }
   else
@@ -344,7 +363,7 @@ u8 AckModBusReadReg(u16 reg_addr, u16 reg_num, int fd_radio)
     Send_Data_A8_array[index++]=cal_crc&0xFF;
     Send_Data_A8_array[index++]=cal_crc>>8;
 
-    UART0_Send(fd_radio, (char*)Send_Data_A8_array, index);
+    Radio_Send(fd_radio, (char*)Send_Data_A8_array, index, RADIO_ACK_DELAY_MS);
   }
   return 0;
 }
@@ -408,7 +427,7 @@ u8 AckModBusWriteOneReg(u16 reg_addr,u16 reg_value, int fd_radio)
   Send_Data_A8_array[index++]=cal_crc&0xff;
   Send_Data_A8_array[index++]=cal_crc>>8;
 
-  UART0_Send(fd_radio, (char*)Send_Data_A8_array, index);
+  Radio_Send(fd_radio, (char*)Send_Data_A8_array, index, RADIO_ACK_DELAY_MS);
   return 0;    
 }
 
@@ -462,7 +481,44 @@ u8 AckModBusWriteMultiReg(u16 reg_addr, u16 reg_num, u8* pData, int fd_radio)
   Send_Data_A8_array[index++]=cal_crc&0xff;
   Send_Data_A8_array[index++]=cal_crc>>8;
   
-  UART0_Send(fd_radio, (char*)Send_Data_A8_array, index);
+  Radio_Send(fd_radio, (char*)Send_Data_A8_array, index, RADIO_ACK_DELAY_MS);
   return 0;      
 }
+
+
+
+int Radio_Send(int fd, char *send_buf, int data_len, int delay_ms) 
+{
+  RADIO_INFOR_CONTENT* pRADIO_INFOR_CONTENT;
+  pRADIO_INFOR_CONTENT = RADIO_INFOR_CONTENT_List + RADIO_INFOR_CONTENT_LIST_InIndex;
+  pRADIO_INFOR_CONTENT->fd = fd;
+  pRADIO_INFOR_CONTENT->delay_ms = delay_ms; 
+  pRADIO_INFOR_CONTENT->data_len = (u8) data_len; 
+  memcpy(pRADIO_INFOR_CONTENT->data, send_buf, pRADIO_INFOR_CONTENT->data_len);
+  pRADIO_INFOR_CONTENT->timestamp = GetCurrentTimeMs();
+  RADIO_INFOR_CONTENT_LIST_InIndex += 1;  
+  RADIO_INFOR_CONTENT_LIST_InIndex &= (RADIO_INFOR_CONTENT_LIST_NUM_MASK);
+  
+  /*
+  printf("Radio_Send, %d, %lld, %lld\r\n", 
+    pRADIO_INFOR_CONTENT->data_len, 
+    pRADIO_INFOR_CONTENT->timestamp, 
+    pRADIO_INFOR_CONTENT->delay_ms);
+  */
+}
+
+void Radio_Send_Task(void)
+{
+  if(RADIO_INFOR_CONTENT_LIST_InIndex != RADIO_INFOR_CONTENT_LIST_OutIndex)
+  {
+    RADIO_INFOR_CONTENT* pRADIO_INFOR_CONTENT = RADIO_INFOR_CONTENT_List + RADIO_INFOR_CONTENT_LIST_OutIndex;
+    if((pRADIO_INFOR_CONTENT->timestamp + pRADIO_INFOR_CONTENT->delay_ms) <= GetCurrentTimeMs())
+    {
+      UART0_Send(pRADIO_INFOR_CONTENT->fd, (char*)pRADIO_INFOR_CONTENT->data, pRADIO_INFOR_CONTENT->data_len);
+      RADIO_INFOR_CONTENT_LIST_OutIndex += 1;  
+      RADIO_INFOR_CONTENT_LIST_OutIndex &= (RADIO_INFOR_CONTENT_LIST_NUM_MASK);
+    }
+  }
+}
+
 
