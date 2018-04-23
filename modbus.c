@@ -3,6 +3,7 @@
 #include "string.h"
 #include "stdio.h"
 #include "misc.h"
+#include "module_core.h"
 
 #define RADIO_ACK_DELAY_MS	30
 MOD_BUS_REG MOD_BUS_Reg;
@@ -69,11 +70,75 @@ int RADIO_INFOR_CONTENT_LIST_InIndex = 0;
 int RADIO_INFOR_CONTENT_LIST_OutIndex = 0;
 //--------------------------------------//
 
+s64 SaveModbusReg_ms;
 int LoadModbusReg(void)
 {
+  int size = 0, set_to_default = 0;
+  FILE* modbus_bin = fopen("modbus_reg.bin", "rb");
+  if(modbus_bin != NULL)
+  {
+    //printf("modbus_reg.bin exist!\r\n");
+    fseek(modbus_bin, 0L, SEEK_END); 
+    size = ftell(modbus_bin); 
+    fseek(modbus_bin, 0L, SEEK_SET);
+  }
+  else
+  {
+    printf("modbus_reg.bin not exist!\r\n");
+  }
+  if(size != sizeof(MOD_BUS_REG))
+  {
+    if(modbus_bin) fclose(modbus_bin);
+    set_to_default = 1;
+    printf("modbus_bin size error ! %d\r\n", size);
+  }
+  else
+  {
+    fread(&MOD_BUS_Reg, 1, sizeof(MOD_BUS_REG), modbus_bin);
+    fclose(modbus_bin);
+    if(MOD_BUS_Reg.MOD_REG_MAGIC_WORD != DEFAULT_MOD_BUS_Reg.MOD_REG_MAGIC_WORD)
+    {
+      set_to_default = 1;
+      printf("MOD_REG_MAGIC_WORD error ! %x\r\n", MOD_BUS_Reg.MOD_REG_MAGIC_WORD);
+    }
+    else
+    {
+      printf("LoadModbusReg ok ! \r\n");
+    }
+  }
+  if(set_to_default)
+  {
+    modbus_bin = fopen("modbus_reg.bin", "wb+");
+    memcpy(&MOD_BUS_Reg, &DEFAULT_MOD_BUS_Reg, sizeof(MOD_BUS_REG));
+    fwrite(&MOD_BUS_Reg, 1, sizeof(MOD_BUS_REG), modbus_bin);
+    fclose(modbus_bin);
+  }
 
-  memcpy(&MOD_BUS_Reg, &DEFAULT_MOD_BUS_Reg, sizeof(MOD_BUS_REG));
+  SaveModbusReg_ms = GetCurrentTimeMs();
   return 0;
+}
+
+void SaveModbusReg_Task(void)
+{
+#define SAVE_ONCE_BETWEEN_MS 60000  //1 minute
+  s64 cur_ms = GetCurrentTimeMs(); 
+  if((SaveModbusReg_ms + SAVE_ONCE_BETWEEN_MS) < cur_ms)
+  {
+    printf("---- 1 minute ----\r\n");
+    SaveModbusReg_ms = cur_ms;
+    if(MOD_BUS_REG_FreshFlag) 
+    {
+      FILE* modbus_bin;
+      MOD_BUS_REG_FreshFlag = 0;
+      modbus_bin = fopen("modbus_reg.bin", "wb+");
+      if (modbus_bin)
+      {
+        fwrite(&MOD_BUS_Reg, 1, sizeof(MOD_BUS_REG), modbus_bin);
+        fclose(modbus_bin);
+        printf("SaveModbusReg once\r\n");
+      }
+    }
+  }
 }
 
 void Analysis_Receive_From_Master(u8 data, MODBUS* A8_Modbus, MOD_BUS_REG* MOD_BUS_Reg, int fd_radio)
@@ -437,14 +502,38 @@ u8 AckModBusWriteMultiReg(u16 reg_addr, u16 reg_num, u8* pData, int fd_radio)
   u16 index=0;
   u8 return_code=return_OK;  
   u16 cal_crc, loop;
-#if (0)
+#if (1)
   switch(reg_addr)
   {
-  case 0x30:
+  case 0x28:
     {
-      if(reg_num==2)
-      {  
-        return_code=return_OK; 
+      if(reg_num == 4)
+      {
+        float longti,lati;
+        u8* ptr;
+        ptr = (u8*) &longti;
+        ptr[0] = pData[3];
+        ptr[1] = pData[2];
+        ptr[2] = pData[1];
+        ptr[3] = pData[0];
+        ptr = (u8*) &lati;
+        ptr[0] = pData[7];
+        ptr[1] = pData[6];
+        ptr[2] = pData[5];
+        ptr[3] = pData[4];
+        if((longti >= 0.0) && (longti <= 180.0) && (lati >= 0.0) && (lati <= 90.0)) 
+        {
+          if(MODULE_CORE_Param != NULL)
+          {
+            Coordinate_Release(MODULE_CORE_Param->coo);
+            MODULE_CORE_Param->coo = Coordinate_Init((double)lati, (double)longti); 
+          }
+          return_code=return_OK; 
+        }
+        else
+        {
+          return_code=illegal_data;
+        }
       }
       else 
       {

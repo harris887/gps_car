@@ -162,6 +162,7 @@ int main(int argc, char **argv)
     UART0_RX_Task(fd_gps);
     MODBUS_UART_RX_Task(fd_radio);
     Radio_Send_Task();
+    SaveModbusReg_Task();
     //---- parse NMEA ----//
     for(i=0;i<NMEA_R_BUF_LEN;i++)
     {

@@ -1,12 +1,6 @@
-           #ifndef _modbus_h_
+#ifndef _modbus_h_
 #define _modbus_h_
-
-typedef unsigned char  u8;
-typedef signed char    s8;
-typedef unsigned short u16;
-typedef signed short   s16;
-typedef unsigned int   u32;
-typedef signed int     s32;
+#include "type_def.h"
 
 
 #define MAGIC_WORD  0x1A2B
@@ -105,5 +99,6 @@ extern int LoadModbusReg(void);
 
 extern int Radio_Send(int fd, char *send_buf, int data_len, int delay_ms); 
 extern void Radio_Send_Task(void);
+extern void SaveModbusReg_Task(void);
 #endif
 

@@ -1,6 +1,7 @@
 #ifndef _MISC_H_
 #define _MISC_H_
 #include "nmea.h"
+#include "type_def.h"
 
 
 #define MAX_WHEEL_SPEED_MMS          500.0 //300.0, 400.0, [500.0], 600.0, 700.0     //轮子最大速度，单位：mm/s
@@ -19,10 +20,7 @@
 //---------------------//
 extern int system_time_in_sec;
 
-//typedef unsigned long long  u64;
-//typedef signed long long    s64;
-typedef unsigned long  u64;
-typedef signed long    s64;
+
 
 s64 GetCurrentTimeMs(void);
 void Get_MainLoopStartTime(void);
