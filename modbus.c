@@ -610,4 +610,32 @@ void Radio_Send_Task(void)
   }
 }
 
+void UpdateModBusRegs(void)
+{
+  short car_location_x = ;
+  short car_location_y = ;
+  short car_current_yaw = ;
+  short car_speed_unit_10cms = ;
+  float gps_longti = ;
+  float gps_lati = ;
+  float gps_yaw = ;
+  unsigned short location_quality = ;
+  unsigned short yaw_quality = ;
 
+  u16* longti = (u16*) &gps_longti;
+  u16* lati = (u16*) &gps_lati;
+  u16* yaw = (u16*) &gps_yaw;
+
+  MOD_BUS_Reg.VEHICLE_LOCATION_X = car_location_x;
+  MOD_BUS_Reg.VEHICLE_LOCATION_Y = location_y;
+  MOD_BUS_Reg.VEHICLE_LOCATION_YAW = car_current_yaw;
+  MOD_BUS_Reg.VEHICLE_SPEED = car_speed_unit_10cms;
+  MOD_BUS_Reg.VEHICLE_LONGTI[1] = longti[0];
+  MOD_BUS_Reg.VEHICLE_LONGTI[0] = longti[1];
+  MOD_BUS_Reg.VEHICLE_LATI[1] = lati[0];
+  MOD_BUS_Reg.VEHICLE_LATI[0] = lati[1];
+  MOD_BUS_Reg.VEHICLE_YAW[1] = yaw[0];
+  MOD_BUS_Reg.VEHICLE_YAW[0] = yaw[1];
+  MOD_BUS_Reg.GPS_LOCATION_QUALITY = location_quality;
+  MOD_BUS_Reg.GPS_YAW_QUALITY = yaw_quality;
+}
