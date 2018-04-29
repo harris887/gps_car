@@ -5,7 +5,8 @@
 #include "misc.h"
 #include "module_core.h"
 
-#define RADIO_ACK_DELAY_MS	30
+#define RADIO_ACK_DELAY_MS	 50 //60
+#define SAVE_ONCE_BETWEEN_MS 60000  //1 minute
 MOD_BUS_REG MOD_BUS_Reg;
 MOD_BUS_REG MOD_BUS_Reg_Backup;
 
@@ -18,11 +19,12 @@ const MOD_BUS_REG DEFAULT_MOD_BUS_Reg=
 
   //-- 0x20 ~ 0x3F--//
   .VEHICLE_CONTROL = 0, 
+  .VEHICLE_TEST_CONTROL = 0,
   .ORIGIN_LONGTI = {0x3f80, 0x0000},//1.0f
   .ORIGIN_LATI = {0x3faa,0xaa8f},   //1.3333f
 
   //-- 0x40 ~ 0x4F--//
-  .VEHICLE_STATUS = 0,
+  .VEHICLE_STATUS = 0x0F0F, //
   .BATT_VOLT = 480,
   .MOTO_CURRENT = {0, 10, 20, 30},
 
@@ -120,8 +122,8 @@ int LoadModbusReg(void)
 
 void SaveModbusReg_Task(void)
 {
-#define SAVE_ONCE_BETWEEN_MS 60000  //1 minute
   s64 cur_ms = GetCurrentTimeMs(); 
+  static int save_times = 0;
   if((SaveModbusReg_ms + SAVE_ONCE_BETWEEN_MS) < cur_ms)
   {
     printf("---- 1 minute ----\r\n");
@@ -135,7 +137,11 @@ void SaveModbusReg_Task(void)
       {
         fwrite(&MOD_BUS_Reg, 1, sizeof(MOD_BUS_REG), modbus_bin);
         fclose(modbus_bin);
-        printf("SaveModbusReg once\r\n");
+        printf("SaveModbusReg once, total = %d\r\n", ++save_times);
+      }
+      else
+      {
+        printf("SaveModbusReg Error ! \r\n");
       }
     }
   }
@@ -472,7 +478,38 @@ u8 AckModBusWriteOneReg(u16 reg_addr,u16 reg_value, int fd_radio)
     return_code=illegal_register;
   }
 #else
-  if(reg_addr <= (MOD_BUS_REG_NUM - 1))
+  if(reg_addr == 0x20)
+  {
+    if(reg_value != MOD_BUS_Reg.VEHICLE_CONTROL)
+    {
+      if((reg_value != 0) && (MOD_BUS_Reg.MAP_NUM != 0) && (MOD_BUS_Reg.MAP_INDEX > 0) && (MOD_BUS_Reg.MAP_INDEX <= MOD_BUS_Reg.MAP_NUM))
+      {
+        MOD_BUS_Reg.VEHICLE_CONTROL = reg_value;
+        return_code = return_OK;
+      }
+      else if(reg_value == 0)
+      {
+        MOD_BUS_Reg.VEHICLE_CONTROL = reg_value;
+        return_code = return_OK;
+      }
+      else return_code = illegal_data;
+    }
+    else if(reg_value == 0x0)
+    {
+      MOD_BUS_Reg.VEHICLE_CONTROL = reg_value;
+      return_code = return_OK;
+    }
+    else
+    {
+      return_code = illegal_data;
+    }
+  }
+  else if(reg_addr == 0x21)
+  {
+    MOD_BUS_Reg.VEHICLE_TEST_CONTROL = reg_value;
+    return_code = return_OK;
+  }
+  else if(reg_addr <= (MOD_BUS_REG_NUM - 1))
   {
     u16* pBuf = (u16*)(&MOD_BUS_Reg) + reg_addr;
     *pBuf = reg_value;
@@ -502,50 +539,46 @@ u8 AckModBusWriteMultiReg(u16 reg_addr, u16 reg_num, u8* pData, int fd_radio)
   u16 index=0;
   u8 return_code=return_OK;  
   u16 cal_crc, loop;
-#if (1)
-  switch(reg_addr)
+
+  if(reg_addr == 0x28)
   {
-  case 0x28:
+    if(reg_num == 4)
     {
-      if(reg_num == 4)
-      {
-        float longti,lati;
-        u8* ptr;
-        ptr = (u8*) &longti;
-        ptr[0] = pData[3];
-        ptr[1] = pData[2];
-        ptr[2] = pData[1];
-        ptr[3] = pData[0];
-        ptr = (u8*) &lati;
-        ptr[0] = pData[7];
-        ptr[1] = pData[6];
-        ptr[2] = pData[5];
-        ptr[3] = pData[4];
-        if((longti >= 0.0) && (longti <= 180.0) && (lati >= 0.0) && (lati <= 90.0)) 
-        {
-          if(MODULE_CORE_Param != NULL)
-          {
-            Coordinate_Release(MODULE_CORE_Param->coo);
-            MODULE_CORE_Param->coo = Coordinate_Init((double)lati, (double)longti); 
-          }
-          return_code=return_OK; 
-        }
-        else
-        {
-          return_code=illegal_data;
-        }
+      float longti,lati;
+      u8* ptr;
+      u16 H16,L16;
+      ptr = (u8*) &longti;
+      ptr[0] = pData[3];
+      ptr[1] = pData[2];
+      ptr[2] = pData[1];
+      ptr[3] = pData[0];
+      ptr = (u8*) &lati;
+      ptr[0] = pData[7];
+      ptr[1] = pData[6];
+      ptr[2] = pData[5];
+      ptr[3] = pData[4];
+
+      if((longti >= 0.0) && (longti <= 180.0) && (lati >= 0.0) && (lati <= 90.0)) 
+      {        
+        MOD_BUS_Reg.ORIGIN_LONGTI[0] = ((u16)pData[0] << 8) | (u16)pData[1];
+        MOD_BUS_Reg.ORIGIN_LONGTI[1] = ((u16)pData[2] << 8) | (u16)pData[3];    
+        MOD_BUS_Reg.ORIGIN_LATI[0] = ((u16)pData[4] << 8) | (u16)pData[5];
+        MOD_BUS_Reg.ORIGIN_LATI[1] = ((u16)pData[6] << 8) | (u16)pData[7];
+        init_COORDINATE_flag = 1;
+        MOD_BUS_REG_FreshFlag=1;
+        return_code=return_OK; 
       }
-      else 
+      else
       {
         return_code=illegal_data;
       }
     }
-    break;
-  default:
-    return_code=illegal_register;
+    else 
+    {
+      return_code=illegal_data;
+    }
   }
-#else
-  if((reg_addr <= (MOD_BUS_REG_NUM - 1)) && ((reg_addr + reg_num) <= MOD_BUS_REG_NUM) && (reg_num <= 32))
+  else if((reg_addr <= (MOD_BUS_REG_NUM - 1)) && ((reg_addr + reg_num) <= MOD_BUS_REG_NUM) && (reg_num <= 32))
   {
     u16* pBuf = (u16*)(&MOD_BUS_Reg) + reg_addr;
     for(loop = 0; loop < reg_num; loop++)
@@ -560,7 +593,6 @@ u8 AckModBusWriteMultiReg(u16 reg_addr, u16 reg_num, u8* pData, int fd_radio)
   {
     return_code=illegal_register;
   }
-#endif
   
   //回复用户
   Send_Data_A8_array[index++]=MOD_BUS_Reg.SLAVE_ADDR;
@@ -610,32 +642,4 @@ void Radio_Send_Task(void)
   }
 }
 
-void UpdateModBusRegs(void)
-{
-  short car_location_x = ;
-  short car_location_y = ;
-  short car_current_yaw = ;
-  short car_speed_unit_10cms = ;
-  float gps_longti = ;
-  float gps_lati = ;
-  float gps_yaw = ;
-  unsigned short location_quality = ;
-  unsigned short yaw_quality = ;
 
-  u16* longti = (u16*) &gps_longti;
-  u16* lati = (u16*) &gps_lati;
-  u16* yaw = (u16*) &gps_yaw;
-
-  MOD_BUS_Reg.VEHICLE_LOCATION_X = car_location_x;
-  MOD_BUS_Reg.VEHICLE_LOCATION_Y = location_y;
-  MOD_BUS_Reg.VEHICLE_LOCATION_YAW = car_current_yaw;
-  MOD_BUS_Reg.VEHICLE_SPEED = car_speed_unit_10cms;
-  MOD_BUS_Reg.VEHICLE_LONGTI[1] = longti[0];
-  MOD_BUS_Reg.VEHICLE_LONGTI[0] = longti[1];
-  MOD_BUS_Reg.VEHICLE_LATI[1] = lati[0];
-  MOD_BUS_Reg.VEHICLE_LATI[0] = lati[1];
-  MOD_BUS_Reg.VEHICLE_YAW[1] = yaw[0];
-  MOD_BUS_Reg.VEHICLE_YAW[0] = yaw[1];
-  MOD_BUS_Reg.GPS_LOCATION_QUALITY = location_quality;
-  MOD_BUS_Reg.GPS_YAW_QUALITY = yaw_quality;
-}

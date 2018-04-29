@@ -52,7 +52,8 @@ typedef struct
 
   //-- 0x20 ~ 0x3F--//
   u16 VEHICLE_CONTROL;
-  u16 rsv_002[7];
+  u16 VEHICLE_TEST_CONTROL;
+  u16 rsv_002[6];
   u16 ORIGIN_LONGTI[2];
   u16 ORIGIN_LATI[2];
   u16 rsv_003[20];
@@ -85,6 +86,9 @@ typedef struct
   u16 MAP_INFOR[16][2];
   u16 rsv_008[448];
 
+  //-- 0x400 ~
+  u16 MAP_DATA[60000];
+
   u16 MOD_REG_MAGIC_WORD;
 }MOD_BUS_REG;
 
@@ -100,5 +104,6 @@ extern int LoadModbusReg(void);
 extern int Radio_Send(int fd, char *send_buf, int data_len, int delay_ms); 
 extern void Radio_Send_Task(void);
 extern void SaveModbusReg_Task(void);
+
 #endif
 

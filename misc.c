@@ -62,12 +62,15 @@ void timer_check(void)
 
   system_time_in_sec = (ms - ms_init) / 1000;
 
-  s64 n_100ms = (ms - ms_init) / 100;
+  s64 n_100ms = (ms - ms_init) / 1000; //100
   if(n_100ms_bk != n_100ms)
   {
     n_100ms_bk = n_100ms;
 #if (SIMULATE_ENABLE) 
     PID_Flag = 1;
+#endif
+#if (0)
+    PID_Flag = 1; // ****
 #endif
   }
 }

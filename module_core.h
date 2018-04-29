@@ -42,17 +42,26 @@ typedef struct
   int error_flag;
 }MODULE_CORE_PARAM;
 
+#define MAX_POINT_NUM_IN_ONE_MAP  128
+typedef struct
+{
+  u16 Map_Type;            // 地图数据类型：0-点图，其他：保留
+  u16 Point_Num;           // 地图中点的个数，数值>=2
+  s16 Point_Coordinate_XY[MAX_POINT_NUM_IN_ONE_MAP][2];  // 点1的X坐标，单位：米
+}MAP_PARAM;
 
-extern MODULE_CORE_PARAM* MODULE_CORE_Param;
 
-extern MODULE_CORE_PARAM* MODULE_CORE_Init(void);
+//extern MODULE_CORE_PARAM* MODULE_CORE_Param;
+extern int init_COORDINATE_flag;
+
+extern MODULE_CORE_PARAM* MODULE_CORE_Init(FILE* log);
 extern void MODULE_CORE_Release(MODULE_CORE_PARAM* param);
+extern void MODULE_CORE_Task(MODULE_CORE_PARAM* param, GPSINFO* gps, int fd_car, FILE* log);
 
+extern void UpdateModBusRegs(short x, short y, short yaw , short speed);
 
-
-
-
-
+extern int VEHICLE_Run(MODULE_CORE_PARAM * param, GPSINFO* gps, int fd_car, FILE* log);
+extern void Show_MapInfor(void);
 
 #endif
 

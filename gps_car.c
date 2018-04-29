@@ -18,6 +18,7 @@
 #include "config.h"
 #include "log.h"
 #include "modbus.h"
+#include "module_core.h"
 
 typedef enum
 {
@@ -147,6 +148,9 @@ int main(int argc, char **argv)
   DEMO_01_PARAM* demo_01 = NULL;
   DEMO_02_PARAM* demo_02 = NULL;
   DEMO_03_PARAM* demo_03 = NULL;
+  MODULE_CORE_PARAM* MODULE_CORE_Param = NULL;
+  MODULE_CORE_Param = MODULE_CORE_Init(log);
+
   int pro = 0;
   system(STTY_US TTY_PATH);
   //-------------------------------------------------------------//
@@ -163,6 +167,8 @@ int main(int argc, char **argv)
     MODBUS_UART_RX_Task(fd_radio);
     Radio_Send_Task();
     SaveModbusReg_Task();
+
+    MODULE_CORE_Task(MODULE_CORE_Param, &gps, fd_car, log) ;
     //---- parse NMEA ----//
     for(i=0;i<NMEA_R_BUF_LEN;i++)
     {
@@ -195,6 +201,11 @@ int main(int argc, char **argv)
       }
       break;
 #if (1) //---- 两点距离测试 ----//
+    case 'I':
+      {
+        Show_MapInfor();
+      }
+      break;
     case 'A':
       {
         //lati_1 = gps.latitude_InM;
@@ -444,6 +455,7 @@ int main(int argc, char **argv)
   DEMO_01_Release(demo_01);
   DEMO_02_Release(demo_02);
   DEMO_03_Release(demo_03);
+  MODULE_CORE_Release(MODULE_CORE_Param);
   printf("\n---- test  end ----\n");
   UART0_Close(fd_gps);   
   UART0_Close(fd_car); 
@@ -453,133 +465,6 @@ int main(int argc, char **argv)
 	return 0;
 }
 
-
-
-
-
-#if (0)
-    if(fd_car & 0x0)
-    {
-      static int pro = 0;
-      switch(pro)
-      {
-        case 0:
-        {
-          if(system_time_in_sec >= 2)
-          {
-            SetMotoSpeed(fd_car, 100, 100);
-            pro += 1;
-          }
-        }
-        break;
-        case 1:
-        {
-          if(system_time_in_sec >= 3)
-          {
-            SetMotoSpeed(fd_car, 200, 200);
-
-            pro += 1;
-          }
-        }
-        break;
-        case 2:
-        {
-          if(system_time_in_sec >= 4)
-          {
-            SetMotoSpeed(fd_car, 300, 300);
-            pro += 1;
-          }
-        }
-        break;
-        case 3:
-        {
-          if(system_time_in_sec >= 5)
-          {
-            SetMotoSpeed(fd_car, 400, 400);
-            pro += 1;
-          }
-        }
-        break;
-        case 4:
-        {
-          if(system_time_in_sec >= 6)
-          {
-            SetMotoSpeed(fd_car, 300, 300);
-            pro += 1;
-          }
-        }
-        break;
-        case 5:
-        {
-          if(system_time_in_sec >= 7)
-          {
-            SetMotoSpeed(fd_car, 200, 200);
-            pro += 1;
-          }
-        }
-        break;
-        case 6:
-        {
-          if(system_time_in_sec >= 8)
-          {
-            SetMotoSpeed(fd_car, 100, 100);
-            pro += 1;
-          }
-        }
-        break;
-        case 7:
-        {
-          if(system_time_in_sec >= 9)
-          {
-            SetMotoSpeed(fd_car, 0, 0);
-            pro += 1;
-          }
-        }
-        break;
-        case 8:
-        {
-          if(system_time_in_sec >= 10)
-          {
-            loop_flag = 0;
-            pro += 1;
-          }
-        }
-        break;
-      }
-    }
-#endif
-
-#if (0)
-  system(STTY_US TTY_PATH);
-  timer_init();
-  while(loop_flag)
-  {
-    static int sec_bk = 0;
-    timer_check();
-    keyboard_char = get_char();
-    if(sec_bk != system_time_in_sec)
-    {
-      sec_bk = system_time_in_sec;
-      printf("second = %d \r\n", sec_bk);
-    }
-    switch(keyboard_char)
-    {
-    case 0: break;
-    case 3: //ctrl+c
-      {
-        system(STTY_DEF TTY_PATH);
-        return 0;
-      }
-      break;
-    default:
-      {
-        printf("-%c-\r\n", keyboard_char);
-      } 
-      break;  
-    }
-    usleep(1000);
-  }
-#endif
 
 
 

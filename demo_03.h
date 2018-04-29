@@ -67,6 +67,8 @@ typedef struct
 void DEMO_03_Release(DEMO_03_PARAM* param);
 DEMO_03_PARAM* DEMO_03_Init(double lati_m[], double longti_m[], int num_point, FILE* log);
 int DEMO_03_Task(DEMO_03_PARAM * param, GPSINFO* gps, int fd_car, FILE* log);
+LINE_SEGMENT_PP_PARAM* Creat_LineSegmentPP(double start_x, double start_y, double end_x, double end_y, double speed_limit);
+void LineSegmentPP_Release(LINE_SEGMENT_PP_PARAM* param);
 #endif
 
 
