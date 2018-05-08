@@ -223,6 +223,8 @@ void MODULE_CORE_Task(MODULE_CORE_PARAM* param, GPSINFO* gps, int fd_car, FILE* 
     int ret = VEHICLE_Run(param, gps, fd_car, log);
     if (ret < 0) 
     {
+
+      MOD_BUS_Reg.VEHICLE_CONTROL = 0; // force stop
       printf("VEHICLE_Run Finish !\r\n");
       pro = 0;
     }

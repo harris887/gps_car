@@ -5,7 +5,7 @@
 #include "misc.h"
 #include "module_core.h"
 
-#define RADIO_ACK_DELAY_MS	 50 //60
+#define RADIO_ACK_DELAY_MS	 100 //60
 #define SAVE_ONCE_BETWEEN_MS 60000  //1 minute
 MOD_BUS_REG MOD_BUS_Reg;
 MOD_BUS_REG MOD_BUS_Reg_Backup;

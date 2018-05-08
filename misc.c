@@ -62,7 +62,7 @@ void timer_check(void)
 
   system_time_in_sec = (ms - ms_init) / 1000;
 
-  s64 n_100ms = (ms - ms_init) / 1000; //100
+  s64 n_100ms = (ms - ms_init) / 100;
   if(n_100ms_bk != n_100ms)
   {
     n_100ms_bk = n_100ms;

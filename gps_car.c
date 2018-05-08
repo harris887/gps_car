@@ -200,12 +200,26 @@ int main(int argc, char **argv)
         return 0;
       }
       break;
-#if (1) //---- 两点距离测试 ----//
     case 'I':
       {
         Show_MapInfor();
       }
       break;
+    case 'P':
+      {
+        if(MODULE_CORE_Param->coo != NULL)
+        {
+          COORDINATE current_location;
+          Get_Coordinate(&current_location, gps.latitude_InM, gps.longitude_InM, gps.Yaw, MODULE_CORE_Param->coo);
+          printf("\r\n  ---- curr_x = %f , curr_y = %f , curr_dir = %f , [%d]----\r\n", current_location.x, current_location.y, current_location.direction, MOD_BUS_Reg.VEHICLE_CONTROL);
+        }
+        else
+        {
+          printf("ORIGIN POINT NULL !\r\n");
+        } 
+      }
+      break;
+#if (1) //---- 两点距离测试 ----//
     case 'A':
       {
         //lati_1 = gps.latitude_InM;

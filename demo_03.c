@@ -70,6 +70,7 @@ void LineSegmentPP_Release(LINE_SEGMENT_PP_PARAM* param)
 */
 DEMO_03_PARAM* DEMO_03_Init(double lati_m[], double longti_m[], int num_point, FILE* log)
 {
+  int i;
   if(num_point < 2) return NULL;
   int line_num = num_point - 1;
   DEMO_03_PARAM* demo = (DEMO_03_PARAM*) malloc(sizeof(DEMO_03_PARAM));
@@ -82,7 +83,7 @@ DEMO_03_PARAM* DEMO_03_Init(double lati_m[], double longti_m[], int num_point, F
     demo->line = (LINE_SEGMENT_PP_PARAM**) malloc(sizeof(LINE_SEGMENT_PP_PARAM*) * line_num);
     demo->line_num = line_num;
     // 生成 [num_point - 1] 条直线
-    for(int i = 0; i < line_num; i++)
+    for(i = 0; i < line_num; i++)
     {
       Get_Coordinate(point, lati_m[i + 1], longti_m[i + 1], 0.0, coo_base);
       LINE_SEGMENT_PP_PARAM* line = Creat_LineSegmentPP(line_start_x, line_start_y, point->x, point->y, speed_limit);
@@ -335,12 +336,13 @@ int DEMO_03_Task(DEMO_03_PARAM * param, GPSINFO* gps, int fd_car, FILE* log)
 
 void DEMO_03_Release(DEMO_03_PARAM* param)
 {
+  int i;
   if(param != NULL)
   {
     Coordinate_Release(param->coo);
     if(param->line != NULL)
     {
-      for(int i = 0; i < param->line_num; i++)
+      for(i = 0; i < param->line_num; i++)
       {
         LineSegmentPP_Release(param->line[i]);
       }
