@@ -20,8 +20,8 @@ const MOD_BUS_REG DEFAULT_MOD_BUS_Reg=
   //-- 0x20 ~ 0x3F--//
   .VEHICLE_CONTROL = 0, 
   .VEHICLE_TEST_CONTROL = 0,
-  .ORIGIN_LONGTI = {0x3f80, 0x0000},//1.0f
-  .ORIGIN_LATI = {0x3faa,0xaa8f},   //1.3333f
+  .ORIGIN_LONGTI = {0x3FF3, 0xC0C1, 0xFC8F, 0x3238},  //1.23456   
+  .ORIGIN_LATI = {0x401A, 0x2C3F, 0x3E03, 0x70CE },   //6.54321 
 
   //-- 0x40 ~ 0x4F--//
   .VEHICLE_STATUS = 0x0F0F, //
@@ -29,12 +29,12 @@ const MOD_BUS_REG DEFAULT_MOD_BUS_Reg=
   .MOTO_CURRENT = {0, 10, 20, 30},
 
   //-- 0x50 ~ 0x1FF--//
-  .VEHICLE_LOCATION_X = 0,
-  .VEHICLE_LOCATION_Y = 1,
+  .VEHICLE_LOCATION_X = {0xFFFF, 0XFFF0}, //-16
+  .VEHICLE_LOCATION_Y = {0x0000, 0x0010}, // 16
   .VEHICLE_LOCATION_YAW = 180,
   .VEHICLE_SPEED = 0,
-  .VEHICLE_LONGTI = {0x4006, 0x6666}, //2.1f
-  .VEHICLE_LATI = {0x404c, 0xcccd},   //3.2f
+  .VEHICLE_LONGTI = {0x4000, 0xCCCC, 0xCCCC, 0xCCCD}, //2.1f 
+  .VEHICLE_LATI =   {0x4009, 0x9999, 0x9999, 0x999A}, //3.2f  
   .VEHICLE_YAW = {0x4270, 0x0000},    //60.0
   .GPS_LOCATION_QUALITY = 4,
   .GPS_YAW_QUALITY = 3,
@@ -542,28 +542,46 @@ u8 AckModBusWriteMultiReg(u16 reg_addr, u16 reg_num, u8* pData, int fd_radio)
 
   if(reg_addr == 0x28)
   {
-    if(reg_num == 4)
+    if(reg_num == 8)
     {
-      float longti,lati;
+      double longti,lati;
       u8* ptr;
       u16 H16,L16;
       ptr = (u8*) &longti;
-      ptr[0] = pData[3];
-      ptr[1] = pData[2];
-      ptr[2] = pData[1];
-      ptr[3] = pData[0];
-      ptr = (u8*) &lati;
       ptr[0] = pData[7];
       ptr[1] = pData[6];
       ptr[2] = pData[5];
       ptr[3] = pData[4];
+      ptr[4] = pData[3];
+      ptr[5] = pData[2];
+      ptr[6] = pData[1];
+      ptr[7] = pData[0];
+
+      ptr = (u8*) &lati;
+      pData += sizeof(double);
+      ptr[0] = pData[7];
+      ptr[1] = pData[6];
+      ptr[2] = pData[5];
+      ptr[3] = pData[4];
+      ptr[4] = pData[3];
+      ptr[5] = pData[2];
+      ptr[6] = pData[1];
+      ptr[7] = pData[0];
 
       if((longti >= 0.0) && (longti <= 180.0) && (lati >= 0.0) && (lati <= 90.0)) 
       {        
+        pData -= sizeof(double);
         MOD_BUS_Reg.ORIGIN_LONGTI[0] = ((u16)pData[0] << 8) | (u16)pData[1];
-        MOD_BUS_Reg.ORIGIN_LONGTI[1] = ((u16)pData[2] << 8) | (u16)pData[3];    
-        MOD_BUS_Reg.ORIGIN_LATI[0] = ((u16)pData[4] << 8) | (u16)pData[5];
-        MOD_BUS_Reg.ORIGIN_LATI[1] = ((u16)pData[6] << 8) | (u16)pData[7];
+        MOD_BUS_Reg.ORIGIN_LONGTI[1] = ((u16)pData[2] << 8) | (u16)pData[3]; 
+        MOD_BUS_Reg.ORIGIN_LONGTI[2] = ((u16)pData[4] << 8) | (u16)pData[5];
+        MOD_BUS_Reg.ORIGIN_LONGTI[3] = ((u16)pData[6] << 8) | (u16)pData[7]; 
+   
+        pData += sizeof(double);
+        MOD_BUS_Reg.ORIGIN_LATI[0] = ((u16)pData[0] << 8) | (u16)pData[1];
+        MOD_BUS_Reg.ORIGIN_LATI[1] = ((u16)pData[2] << 8) | (u16)pData[3]; 
+        MOD_BUS_Reg.ORIGIN_LATI[2] = ((u16)pData[4] << 8) | (u16)pData[5];
+        MOD_BUS_Reg.ORIGIN_LATI[3] = ((u16)pData[6] << 8) | (u16)pData[7]; 
+
         init_COORDINATE_flag = 1;
         MOD_BUS_REG_FreshFlag=1;
         return_code=return_OK; 

@@ -54,9 +54,9 @@ typedef struct
   u16 VEHICLE_CONTROL;
   u16 VEHICLE_TEST_CONTROL;
   u16 rsv_002[6];
-  u16 ORIGIN_LONGTI[2];
-  u16 ORIGIN_LATI[2];
-  u16 rsv_003[20];
+  u16 ORIGIN_LONGTI[4]; //--
+  u16 ORIGIN_LATI[4];   //--
+  u16 rsv_003[16];
 
   //-- 0x40 ~ 0x4F--//
   u16 VEHICLE_STATUS;
@@ -66,16 +66,17 @@ typedef struct
   u16 rsv_005[4];
 
   //-- 0x50 ~ 0x1FF--//
-  s16 VEHICLE_LOCATION_X;
-  s16 VEHICLE_LOCATION_Y;
+  u16 VEHICLE_LOCATION_X[2]; //--
+  u16 VEHICLE_LOCATION_Y[2]; //--
   s16 VEHICLE_LOCATION_YAW;
   s16 VEHICLE_SPEED;
-  u16 VEHICLE_LONGTI[2];
-  u16 VEHICLE_LATI[2];
+  u16 rsv_005_1[2];
+  u16 VEHICLE_LONGTI[4]; //--
+  u16 VEHICLE_LATI[4];   //--
   u16 VEHICLE_YAW[2];
   u16 GPS_LOCATION_QUALITY;
   u16 GPS_YAW_QUALITY;
-  u16 rsv_006[420];
+  u16 rsv_006[412];
 
   //-- 0x200 ~ 0x21F--//
   u16 MAP_NUM;

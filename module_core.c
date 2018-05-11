@@ -111,13 +111,14 @@ void MODULE_CORE_Task(MODULE_CORE_PARAM* param, GPSINFO* gps, int fd_car, FILE* 
     init_COORDINATE_flag = 0;
     if(param != NULL)
     {
-      u32 longti = ((MOD_BUS_Reg.ORIGIN_LONGTI[0] << 16) | MOD_BUS_Reg.ORIGIN_LONGTI[1]);
-      u32 lati = ((MOD_BUS_Reg.ORIGIN_LATI[0] << 16) | MOD_BUS_Reg.ORIGIN_LATI[1]);
+      u64 longti = (((u64)MOD_BUS_Reg.ORIGIN_LONGTI[0] << 48) | ((u64)MOD_BUS_Reg.ORIGIN_LONGTI[1] << 32) | ((u64)MOD_BUS_Reg.ORIGIN_LONGTI[2] << 16) | ((u64)MOD_BUS_Reg.ORIGIN_LONGTI[3] << 0));
+      u64 lati = (((u64)MOD_BUS_Reg.ORIGIN_LATI[0] << 48) | ((u64)MOD_BUS_Reg.ORIGIN_LATI[1] << 32) | ((u64)MOD_BUS_Reg.ORIGIN_LATI[2] << 16) | ((u64)MOD_BUS_Reg.ORIGIN_LATI[3] << 0)); 
+
       double longti_m, lati_m;
       Coordinate_Release(param->coo);
       param->coo = NULL;
-      longti_m = *(float*)&longti * 60.0d;
-      lati_m = *(float*)&lati * 60.0d;
+      longti_m = *(double*)&longti * 60.0d;
+      lati_m = *(double*)&lati * 60.0d;
 
       printf("\r\norgin_lati = %f, orgin_longti = %f\r\n", *(float*)&lati, *(float*)&longti);
       //printf("orgin_lati_m = %f, orgin_longti_m = %f\r\n", lati_m, longti_m);
@@ -167,15 +168,15 @@ void MODULE_CORE_Task(MODULE_CORE_PARAM* param, GPSINFO* gps, int fd_car, FILE* 
                 double speed_limit = 0.5;
                 COORDINATE* point = (COORDINATE*) malloc(sizeof(COORDINATE));
                 int line_num = map->Point_Num - 1, i;
-                double line_start_x = map->Point_Coordinate_XY[0][0], line_start_y = map->Point_Coordinate_XY[0][1];
+                double line_start_x = map->Point_Coordinate_XY[0][0] * 0.01, line_start_y = map->Point_Coordinate_XY[0][1] * 0.01;
                 param->line = (LINE_SEGMENT_PP_PARAM**) malloc(sizeof(LINE_SEGMENT_PP_PARAM*) * line_num);
                 param->line_num = line_num;
                 printf("\r\n\r\n---------------- create %03d lines ----------------\r\n", line_num);
                 for(i = 0; i < line_num; i++)
                 {
                   double x,y;
-                  x = map->Point_Coordinate_XY[i+1][0];
-                  y = map->Point_Coordinate_XY[i+1][1];
+                  x = map->Point_Coordinate_XY[i+1][0] * 0.01;
+                  y = map->Point_Coordinate_XY[i+1][1] * 0.01;
                   LINE_SEGMENT_PP_PARAM* line = (LINE_SEGMENT_PP_PARAM*) Creat_LineSegmentPP(line_start_x, line_start_y, x, y, speed_limit);
                   param->line[i] = line;
                   line_start_x = x;
@@ -254,7 +255,7 @@ void MODULE_CORE_Task(MODULE_CORE_PARAM* param, GPSINFO* gps, int fd_car, FILE* 
       PID_Flag = 0;
 
       Get_Coordinate(&current_location, gps->latitude_InM, gps->longitude_InM, gps->Yaw, param->coo);
-      UpdateModBusRegs((short) current_location.x, (short) current_location.y, (short) current_location.direction , speed);
+      UpdateModBusRegs((int) current_location.x, (int) current_location.y, (short) current_location.direction , speed);
     }
     if(MOD_BUS_Reg.VEHICLE_TEST_CONTROL != test_control_bk)
     {
@@ -273,21 +274,21 @@ void MODULE_CORE_Task(MODULE_CORE_PARAM* param, GPSINFO* gps, int fd_car, FILE* 
   }
 }
 
-void UpdateModBusRegs(short x, short y, short yaw , short speed)
+void UpdateModBusRegs(int x, int y, short yaw , short speed)
 {
-  short car_location_x = x;
-  short car_location_y = y;
+  unsigned int car_location_x = *(unsigned int*)&x;
+  unsigned int car_location_y = *(unsigned int*)&y;
   short car_current_yaw = yaw;
   short car_speed_unit_10cms = speed;
 #if (1) //****
-  float gps_longti = gps.longitude;
-  float gps_lati = gps.latitude;
+  double gps_longti = gps.longitude;
+  double gps_lati = gps.latitude;
   float gps_yaw = gps.Yaw;
   unsigned short location_quality = gps.FixMode;
   unsigned short yaw_quality = gps.AVR_FixMode;
 #else
-  float gps_longti = 12.34;
-  float gps_lati = 67.89;
+  double gps_longti = 12.34;
+  double gps_lati = 67.89;
   float gps_yaw = 11.88;
   unsigned short location_quality = 4;
   unsigned short yaw_quality = 3;
@@ -297,14 +298,20 @@ void UpdateModBusRegs(short x, short y, short yaw , short speed)
   u16* lati = (u16*) &gps_lati;
   u16* g_yaw = (u16*) &gps_yaw;
 
-  MOD_BUS_Reg.VEHICLE_LOCATION_X = car_location_x;
-  MOD_BUS_Reg.VEHICLE_LOCATION_Y = car_location_y;
+  MOD_BUS_Reg.VEHICLE_LOCATION_X[0] = car_location_x >> 16;
+  MOD_BUS_Reg.VEHICLE_LOCATION_X[1] = car_location_x & 0xFFFF;
+  MOD_BUS_Reg.VEHICLE_LOCATION_Y[0] = car_location_y >> 16;
+  MOD_BUS_Reg.VEHICLE_LOCATION_Y[1] = car_location_y & 0xFFFF;
   MOD_BUS_Reg.VEHICLE_LOCATION_YAW = car_current_yaw;
   MOD_BUS_Reg.VEHICLE_SPEED = car_speed_unit_10cms;
-  MOD_BUS_Reg.VEHICLE_LONGTI[1] = longti[0];
-  MOD_BUS_Reg.VEHICLE_LONGTI[0] = longti[1];
-  MOD_BUS_Reg.VEHICLE_LATI[1] = lati[0];
-  MOD_BUS_Reg.VEHICLE_LATI[0] = lati[1];
+  MOD_BUS_Reg.VEHICLE_LONGTI[3] = longti[0];
+  MOD_BUS_Reg.VEHICLE_LONGTI[2] = longti[1];
+  MOD_BUS_Reg.VEHICLE_LONGTI[1] = longti[2];
+  MOD_BUS_Reg.VEHICLE_LONGTI[0] = longti[3];
+  MOD_BUS_Reg.VEHICLE_LATI[3] = lati[0];
+  MOD_BUS_Reg.VEHICLE_LATI[2] = lati[1];
+  MOD_BUS_Reg.VEHICLE_LATI[1] = lati[2];
+  MOD_BUS_Reg.VEHICLE_LATI[0] = lati[3];
   MOD_BUS_Reg.VEHICLE_YAW[1] = g_yaw[0];
   MOD_BUS_Reg.VEHICLE_YAW[0] = g_yaw[1];
   MOD_BUS_Reg.GPS_LOCATION_QUALITY = location_quality;
@@ -499,7 +506,7 @@ int VEHICLE_Run(MODULE_CORE_PARAM * param, GPSINFO* gps, int fd_car, FILE* log)
     }
     counter += 1;
 
-    UpdateModBusRegs((short) param->current_location->x, (short) param->current_location->y, (short) yaw0 , (short)(param->car_speed * 10.0));
+    UpdateModBusRegs((int) param->current_location->x, (int) param->current_location->y, (short) yaw0 , (short)(param->car_speed * 10.0));
   }
   return ret;
 }
@@ -530,7 +537,7 @@ void Show_MapInfor(void)
         for(j = 0; j < map->Point_Num; j++)
         {
           printf("---------------------------------------------\r\n");
-          printf("    [% 6d, % 6d] \r\n", map->Point_Coordinate_XY[j][0], map->Point_Coordinate_XY[j][1]);
+          printf("    [% .2f, % .2fd] \r\n", map->Point_Coordinate_XY[j][0] * 0.01, map->Point_Coordinate_XY[j][1] * 0.01);
         }
       }
       else

@@ -58,7 +58,7 @@ extern MODULE_CORE_PARAM* MODULE_CORE_Init(FILE* log);
 extern void MODULE_CORE_Release(MODULE_CORE_PARAM* param);
 extern void MODULE_CORE_Task(MODULE_CORE_PARAM* param, GPSINFO* gps, int fd_car, FILE* log);
 
-extern void UpdateModBusRegs(short x, short y, short yaw , short speed);
+extern void UpdateModBusRegs(int x, int y, short yaw , short speed);
 
 extern int VEHICLE_Run(MODULE_CORE_PARAM * param, GPSINFO* gps, int fd_car, FILE* log);
 extern void Show_MapInfor(void);
