@@ -47,7 +47,7 @@ typedef struct
 {
   u16 Map_Type;            // 地图数据类型：0-点图，其他：保留
   u16 Point_Num;           // 地图中点的个数，数值>=2
-  s16 Point_Coordinate_XY[MAX_POINT_NUM_IN_ONE_MAP][2];  // 点1的X坐标，单位：米
+  u16 Point_Coordinate_XY[MAX_POINT_NUM_IN_ONE_MAP][4];  // 点1的X坐标，单位：cm
 }MAP_PARAM;
 
 

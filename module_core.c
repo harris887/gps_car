@@ -165,18 +165,29 @@ void MODULE_CORE_Task(MODULE_CORE_PARAM* param, GPSINFO* gps, int fd_car, FILE* 
               // rebuild lines
               if(1)
               {
+                unsigned int temp;
+                int x_cm, y_cm;
                 double speed_limit = 0.5;
                 COORDINATE* point = (COORDINATE*) malloc(sizeof(COORDINATE));
                 int line_num = map->Point_Num - 1, i;
-                double line_start_x = map->Point_Coordinate_XY[0][0] * 0.01, line_start_y = map->Point_Coordinate_XY[0][1] * 0.01;
+                
+                temp = (((unsigned int)map->Point_Coordinate_XY[0][0] << 16) | (unsigned int)map->Point_Coordinate_XY[0][1]);
+                x_cm = *(int*)&temp;
+                temp = (((unsigned int)map->Point_Coordinate_XY[0][2] << 16) | (unsigned int)map->Point_Coordinate_XY[0][3]);
+                y_cm = *(int*)&temp;
+                double line_start_x = x_cm * 0.01, line_start_y = y_cm * 0.01;
                 param->line = (LINE_SEGMENT_PP_PARAM**) malloc(sizeof(LINE_SEGMENT_PP_PARAM*) * line_num);
                 param->line_num = line_num;
                 printf("\r\n\r\n---------------- create %03d lines ----------------\r\n", line_num);
                 for(i = 0; i < line_num; i++)
                 {
                   double x,y;
-                  x = map->Point_Coordinate_XY[i+1][0] * 0.01;
-                  y = map->Point_Coordinate_XY[i+1][1] * 0.01;
+                  temp = (((unsigned int)map->Point_Coordinate_XY[i+1][0] << 16) | (unsigned int)map->Point_Coordinate_XY[i+1][1]);
+                  x_cm = *(int*)&temp;
+                  temp = (((unsigned int)map->Point_Coordinate_XY[i+1][2] << 16) | (unsigned int)map->Point_Coordinate_XY[i+1][3]);
+                  y_cm = *(int*)&temp;
+                  x = x_cm * 0.01;
+                  y = y_cm * 0.01;
                   LINE_SEGMENT_PP_PARAM* line = (LINE_SEGMENT_PP_PARAM*) Creat_LineSegmentPP(line_start_x, line_start_y, x, y, speed_limit);
                   param->line[i] = line;
                   line_start_x = x;
@@ -563,13 +574,19 @@ void Show_MapInfor(void)
     MAP_PARAM* map = (MAP_PARAM*) (MOD_BUS_Reg.MAP_DATA + (start_reg - 0x400));
     if(map->Map_Type == 0)
     {
-      if((2 + map->Point_Num * 2) == map_reg_num)
+      if((2 + map->Point_Num * 4) == map_reg_num)
       {
         printf("  POINT_NUM     = %d\r\n", map->Point_Num);
         for(j = 0; j < map->Point_Num; j++)
         {
+          int x_cm, y_cm ;
+          unsigned int temp;
           printf("---------------------------------------------\r\n");
-          printf("    [% .2f, % .2f] \r\n", map->Point_Coordinate_XY[j][0] * 0.01, map->Point_Coordinate_XY[j][1] * 0.01);
+          temp = (((unsigned int)map->Point_Coordinate_XY[j][0] << 16) | (unsigned int)map->Point_Coordinate_XY[j][1]);
+          x_cm = *(int*)&temp;
+          temp = (((unsigned int)map->Point_Coordinate_XY[j][2] << 16) | (unsigned int)map->Point_Coordinate_XY[j][3]);
+          y_cm = *(int*)&temp;
+          printf("    [% .2f, % .2f] \r\n", x_cm * 0.01, y_cm * 0.01);
         }
       }
       else
