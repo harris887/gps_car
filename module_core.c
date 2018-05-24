@@ -74,7 +74,7 @@ MODULE_CORE_PARAM* MODULE_CORE_Init(FILE* log)
     param->error_sum = 0.0;
     param->max_error_sum =  10.0;
     param->min_error_sum = -10.0;
-    param->max_away_from_line = 4.0; //[车体]到[既定路线]的距离最大为4米，大于这个值后立即停车
+    param->max_away_from_line = 4.0; //4.0; //[车体]到[既定路线]的距离最大为4米，大于这个值后立即停车
     param->max_diff_rate = 0.2; //0.2
     param->min_distance_switch_line = 2.0; //1.0;
 
@@ -120,7 +120,7 @@ void MODULE_CORE_Task(MODULE_CORE_PARAM* param, GPSINFO* gps, int fd_car, FILE* 
       longti_m = *(double*)&longti * 60.0d;
       lati_m = *(double*)&lati * 60.0d;
 
-      printf("\r\norgin_lati = %f, orgin_longti = %f\r\n", *(float*)&lati, *(float*)&longti);
+      printf("\r\norgin_lati = %f, orgin_longti = %f\r\n", *(double*)&lati, *(double*)&longti);
       //printf("orgin_lati_m = %f, orgin_longti_m = %f\r\n", lati_m, longti_m);
       param->coo = Coordinate_Init(lati_m, longti_m); 
       printf("earth_r = %f km, current_lati_cycle_r = %f km\r\n", param->coo->earth_r * 0.001d, param->coo->current_lati_cycle_r * 0.001d);
@@ -226,12 +226,14 @@ void MODULE_CORE_Task(MODULE_CORE_PARAM* param, GPSINFO* gps, int fd_car, FILE* 
     {
 
       MOD_BUS_Reg.VEHICLE_CONTROL = 0; // force stop
+      VEHICLE_Reset(param);
       printf("VEHICLE_Run Finish !\r\n");
       pro = 0;
     }
 
     if(MOD_BUS_Reg.VEHICLE_CONTROL == 0)
     {
+      VEHICLE_Reset(param);
       SetMotoSpeed(fd_car, 0, 0);
       printf("VEHICLE Force Stop !\r\n");
       pro = 0;
@@ -255,7 +257,7 @@ void MODULE_CORE_Task(MODULE_CORE_PARAM* param, GPSINFO* gps, int fd_car, FILE* 
       PID_Flag = 0;
 
       Get_Coordinate(&current_location, gps->latitude_InM, gps->longitude_InM, gps->Yaw, param->coo);
-      UpdateModBusRegs((int) current_location.x, (int) current_location.y, (short) current_location.direction , speed);
+      UpdateModBusRegs((int) (current_location.x * 100.0d), (int) (current_location.y * 100.0d), (short) current_location.direction , speed);
     }
     if(MOD_BUS_Reg.VEHICLE_TEST_CONTROL != test_control_bk)
     {
@@ -297,7 +299,7 @@ void UpdateModBusRegs(int x, int y, short yaw , short speed)
   u16* longti = (u16*) &gps_longti;
   u16* lati = (u16*) &gps_lati;
   u16* g_yaw = (u16*) &gps_yaw;
-
+  //printf("x %d, y %d\r\n", x, y);
   MOD_BUS_Reg.VEHICLE_LOCATION_X[0] = car_location_x >> 16;
   MOD_BUS_Reg.VEHICLE_LOCATION_X[1] = car_location_x & 0xFFFF;
   MOD_BUS_Reg.VEHICLE_LOCATION_Y[0] = car_location_y >> 16;
@@ -316,6 +318,36 @@ void UpdateModBusRegs(int x, int y, short yaw , short speed)
   MOD_BUS_Reg.VEHICLE_YAW[0] = g_yaw[1];
   MOD_BUS_Reg.GPS_LOCATION_QUALITY = location_quality;
   MOD_BUS_Reg.GPS_YAW_QUALITY = yaw_quality;
+}
+
+int VEHICLE_Reset(MODULE_CORE_PARAM * param)
+{
+    param->max_wheel_speed = MAX_WHEEL_SPEED_MMS * 0.001; 
+    param->left_speed = 0;
+    param->right_speed = 0;
+    param->acceleration = MAX_WHEEL_ACCELERATION_MMSS * 0.001; 
+    param->brake_distance = (param->max_wheel_speed / param->acceleration) * param->max_wheel_speed * 0.5;
+    param->run_distance = 0;
+    param->expected_speed = param->max_wheel_speed;
+    param->car_speed = 0;
+
+     	
+    //---- PID系数 ----//
+    param->yaw_P = 1.0;
+    param->P = 1.0;
+    param->I = 0.00;
+    param->D = 0.00;
+    param->error = 0.0;
+    param->last_error = 0.0;
+    param->error_sum = 0.0;
+    param->max_error_sum =  10.0;
+    param->min_error_sum = -10.0;
+    param->max_away_from_line = 4.0; //[车体]到[既定路线]的距离最大为4米，大于这个值后立即停车
+    param->max_diff_rate = 0.2; //0.2
+    param->min_distance_switch_line = 2.0; //1.0;
+
+    //---- ----//
+    param->error_flag = 0;
 }
 
 int VEHICLE_Run(MODULE_CORE_PARAM * param, GPSINFO* gps, int fd_car, FILE* log)
@@ -506,7 +538,7 @@ int VEHICLE_Run(MODULE_CORE_PARAM * param, GPSINFO* gps, int fd_car, FILE* log)
     }
     counter += 1;
 
-    UpdateModBusRegs((int) param->current_location->x, (int) param->current_location->y, (short) yaw0 , (short)(param->car_speed * 10.0));
+    UpdateModBusRegs((int) (param->current_location->x * 100.0d), (int) (param->current_location->y * 100.0d), (short) yaw0 , (short)(param->car_speed * 10.0));
   }
   return ret;
 }
@@ -537,7 +569,7 @@ void Show_MapInfor(void)
         for(j = 0; j < map->Point_Num; j++)
         {
           printf("---------------------------------------------\r\n");
-          printf("    [% .2f, % .2fd] \r\n", map->Point_Coordinate_XY[j][0] * 0.01, map->Point_Coordinate_XY[j][1] * 0.01);
+          printf("    [% .2f, % .2f] \r\n", map->Point_Coordinate_XY[j][0] * 0.01, map->Point_Coordinate_XY[j][1] * 0.01);
         }
       }
       else

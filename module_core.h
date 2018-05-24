@@ -62,6 +62,7 @@ extern void UpdateModBusRegs(int x, int y, short yaw , short speed);
 
 extern int VEHICLE_Run(MODULE_CORE_PARAM * param, GPSINFO* gps, int fd_car, FILE* log);
 extern void Show_MapInfor(void);
+extern int VEHICLE_Reset(MODULE_CORE_PARAM * param);
 
 #endif
 

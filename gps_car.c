@@ -200,6 +200,20 @@ int main(int argc, char **argv)
         return 0;
       }
       break;
+    case 'S':
+      {
+        if(MOD_BUS_Reg.VEHICLE_CONTROL == 0)
+        {
+          MOD_BUS_Reg.VEHICLE_CONTROL = 1;
+          printf("---- Test Start ----\r\n ");
+        }
+        else
+        {
+          MOD_BUS_Reg.VEHICLE_CONTROL = 0;
+          printf("---- Test Stop ----\r\n ");
+        }
+      }
+      break;
     case 'I':
       {
         Show_MapInfor();
