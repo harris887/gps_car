@@ -9,6 +9,7 @@
 #include "uart.h"
 #include "config.h"
 
+#define DEFAULT_min_distance_switch_line 3.0
 //MODULE_CORE_PARAM* MODULE_CORE_Param = NULL;
 int init_COORDINATE_flag = 1;
 int init_ROAD_MAP_flag = 1;
@@ -76,7 +77,7 @@ MODULE_CORE_PARAM* MODULE_CORE_Init(FILE* log)
     param->min_error_sum = -10.0;
     param->max_away_from_line = 4.0; //4.0; //[车体]到[既定路线]的距离最大为4米，大于这个值后立即停车
     param->max_diff_rate = 0.2; //0.2
-    param->min_distance_switch_line = 2.0; //1.0;
+    param->min_distance_switch_line = DEFAULT_min_distance_switch_line; //1.0;
 
     //---- ----//
     param->error_flag = 0;
@@ -178,6 +179,14 @@ void MODULE_CORE_Task(MODULE_CORE_PARAM* param, GPSINFO* gps, int fd_car, FILE* 
                 double line_start_x = x_cm * 0.01, line_start_y = y_cm * 0.01;
                 param->line = (LINE_SEGMENT_PP_PARAM**) malloc(sizeof(LINE_SEGMENT_PP_PARAM*) * line_num);
                 param->line_num = line_num;
+#if (1)
+                COORDINATE current_location_0;
+                Get_Coordinate(&current_location_0, gps->latitude_InM_RTK_Fixed, gps->longitude_InM_RTK_Fixed, gps->Yaw_RTK_Fixed, param->coo);
+                double distance_for_start = sqrt((current_location_0.x - line_start_x) * (current_location_0.x - line_start_x) 
+                   + (current_location_0.y - line_start_y) * (current_location_0.y - line_start_y));
+                if(distance_for_start > 3.0) 
+                  printf("error code 10005, Distance lager than 3.0 meter\r\n");
+#endif
                 printf("\r\n\r\n---------------- create %03d lines ----------------\r\n", line_num);
                 for(i = 0; i < line_num; i++)
                 {
@@ -267,7 +276,8 @@ void MODULE_CORE_Task(MODULE_CORE_PARAM* param, GPSINFO* gps, int fd_car, FILE* 
 #endif
       PID_Flag = 0;
 
-      Get_Coordinate(&current_location, gps->latitude_InM, gps->longitude_InM, gps->Yaw, param->coo);
+      //Get_Coordinate(&current_location, gps->latitude_InM, gps->longitude_InM, gps->Yaw, param->coo);
+      Get_Coordinate(&current_location, gps->latitude_InM_RTK_Fixed, gps->longitude_InM_RTK_Fixed, gps->Yaw_RTK_Fixed, param->coo);
       UpdateModBusRegs((int) (current_location.x * 100.0d), (int) (current_location.y * 100.0d), (short) current_location.direction , speed);
     }
     if(MOD_BUS_Reg.VEHICLE_TEST_CONTROL != test_control_bk)
@@ -331,6 +341,7 @@ void UpdateModBusRegs(int x, int y, short yaw , short speed)
   MOD_BUS_Reg.GPS_YAW_QUALITY = yaw_quality;
 }
 
+int VEHICLE_RESET_Extern = 0;
 int VEHICLE_Reset(MODULE_CORE_PARAM * param)
 {
     param->max_wheel_speed = MAX_WHEEL_SPEED_MMS * 0.001; 
@@ -355,10 +366,11 @@ int VEHICLE_Reset(MODULE_CORE_PARAM * param)
     param->min_error_sum = -10.0;
     param->max_away_from_line = 4.0; //[车体]到[既定路线]的距离最大为4米，大于这个值后立即停车
     param->max_diff_rate = 0.2; //0.2
-    param->min_distance_switch_line = 2.0; //1.0;
+    param->min_distance_switch_line = DEFAULT_min_distance_switch_line; //1.0;
 
     //---- ----//
     param->error_flag = 0;
+    VEHICLE_RESET_Extern = 0;
 }
 
 int VEHICLE_Run(MODULE_CORE_PARAM * param, GPSINFO* gps, int fd_car, FILE* log)
@@ -370,13 +382,29 @@ int VEHICLE_Run(MODULE_CORE_PARAM * param, GPSINFO* gps, int fd_car, FILE* log)
   int cur_line_index;
   LINE_SEGMENT_PP_PARAM* cur_line;
   double yaw0;
+  if(VEHICLE_RESET_Extern != 0)
+  {
+    VEHICLE_RESET_Extern = 0;
+    counter = 0;
+    zero_speed_counter = 0;
+  }
+
   if(PID_Flag)
   {
     PID_Flag = 0;
 
+#if (1)
+    if(log != NULL)
+    {
+      if ((gps->FixMode != 4) || (gps->AVR_FixMode != 3))
+        fprintf(log, "++++ Error: GPS FixMode (%d , %d) ++++ \n", gps->FixMode, gps->AVR_FixMode);
+    }
+#endif
+
     cur_line_index = param->cur_line_index;
     cur_line = param->line[cur_line_index];
-    Get_Coordinate(param->current_location, gps->latitude_InM, gps->longitude_InM, gps->Yaw, param->coo);
+    //Get_Coordinate(param->current_location, gps->latitude_InM, gps->longitude_InM, gps->Yaw, param->coo);
+    Get_Coordinate(param->current_location, gps->latitude_InM_RTK_Fixed, gps->longitude_InM_RTK_Fixed, gps->Yaw_RTK_Fixed, param->coo);
     yaw0 = param->current_location->direction;
     //计算当前点到规定路径的垂线距离
     cur_line->v_b = cur_line->v_ky * param->current_location->y - cur_line->v_kx * param->current_location->x;
@@ -449,6 +477,9 @@ int VEHICLE_Run(MODULE_CORE_PARAM * param, GPSINFO* gps, int fd_car, FILE* log)
       param->error_flag = 1;
       SetMotoSpeed(fd_car, param->left_speed * 1000.0d, param->right_speed * 1000.0d);
       ret = -1;
+
+      counter = 0;
+      zero_speed_counter = 0;
       return ret;
     }
 
@@ -476,6 +507,9 @@ int VEHICLE_Run(MODULE_CORE_PARAM * param, GPSINFO* gps, int fd_car, FILE* log)
       ret = -1;
       printf("zero_speed last %lfs, run_distance = %lf \r\n", (double)zero_speed_counter * control_cycle, param->run_distance);
       SetMotoSpeed(fd_car, param->left_speed * 1000.0d, param->right_speed * 1000.0d);
+
+      counter = 0;
+      zero_speed_counter = 0;
       return ret;
     }
     
@@ -544,7 +578,8 @@ int VEHICLE_Run(MODULE_CORE_PARAM * param, GPSINFO* gps, int fd_car, FILE* log)
       }
 	    else
       {//快到终点[停车]
-	      param->expected_speed = 0;
+        if (dis_end < 1.2) //
+	        param->expected_speed = 0;
 	    }
     }
     counter += 1;

@@ -115,7 +115,7 @@ int LoadModbusReg(void)
     fwrite(&MOD_BUS_Reg, 1, sizeof(MOD_BUS_REG), modbus_bin);
     fclose(modbus_bin);
   }
-
+  MOD_BUS_Reg.VEHICLE_CONTROL = 0;
   SaveModbusReg_ms = GetCurrentTimeMs();
   return 0;
 }

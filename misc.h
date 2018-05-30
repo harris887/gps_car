@@ -4,7 +4,7 @@
 #include "type_def.h"
 
 
-#define MAX_WHEEL_SPEED_MMS          800.0 //500.0 //300.0, 400.0, [500.0], 600.0, 700.0     //轮子最大速度，单位：mm/s
+#define MAX_WHEEL_SPEED_MMS          500.0 //800.0 500.0 //300.0, 400.0, [500.0], 600.0, 700.0     //轮子最大速度，单位：mm/s
 #define MAX_WHEEL_ACCELERATION_MMSS  125.0     //轮子最大加速度，单位：mm/s^2       
 
 //---------------------//
