@@ -8,6 +8,7 @@
 #include "demo_03.h"
 #include "uart.h"
 #include "config.h"
+#include <unistd.h>
 
 #define DEFAULT_min_distance_switch_line 3.0
 //MODULE_CORE_PARAM* MODULE_CORE_Param = NULL;
@@ -253,9 +254,12 @@ void MODULE_CORE_Task(MODULE_CORE_PARAM* param, GPSINFO* gps, int fd_car, FILE* 
 
     if(MOD_BUS_Reg.VEHICLE_CONTROL == 0)
     {
+      static int FStopNum = 0;
       VEHICLE_Reset(param);
+      
+      usleep(1000 * 100); //wait 100ms
       SetMotoSpeed(fd_car, 0, 0);
-      printf("VEHICLE Force Stop !\r\n");
+      printf("VEHICLE Force Stop ! times = %d\r\n", ++FStopNum);
       pro = 0;
     }
   }

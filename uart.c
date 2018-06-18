@@ -426,7 +426,7 @@ int MODBUS_UART_RX_Task(int fd)
         Analysis_Receive_From_Master(temp_buf[i], &MODBUS_Radio, &MOD_BUS_Reg, fd);
     }
     //---- 接收超时处理 ----//
-    if(time >= (last_rx_timestamp + 50))
+    if(time >= (last_rx_timestamp + 100)) //50 -> 100, 20180617, big pakage
     {
       if(MODBUS_Radio.machine_state != 0)
       {
