@@ -19,6 +19,7 @@
 #include "log.h"
 #include "modbus.h"
 #include "module_core.h"
+#include "vehicle.h"
 
 typedef enum
 {
@@ -163,21 +164,13 @@ int main(int argc, char **argv)
 
 #if (SIMULATE_ENABLE) 
 #else
-    UART0_RX_Task(fd_gps);
-    MODBUS_UART_RX_Task(fd_radio);
-    Radio_Send_Task();
+    NMEA_RX_Task(fd_gps);
+    VEHICLE_UART_TRANS_Task(fd_car);
+    RADIO_UART_TRANS_Task(fd_radio); 
     SaveModbusReg_Task();
 
     MODULE_CORE_Task(MODULE_CORE_Param, &gps, fd_car, log) ;
-    //---- parse NMEA ----//
-    for(i=0;i<NMEA_R_BUF_LEN;i++)
-    {
-      if(NMEA_R_BUF[i].Flag==2)
-      {
-        NMEA_parse(NMEA_R_BUF[i].BUF);
-        NMEA_R_BUF[i].Flag=0;
-      }
-    }
+
 
     if(sec_bk != system_time_in_sec)
     {

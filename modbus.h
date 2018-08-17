@@ -103,8 +103,8 @@ extern u16 ModBus_CRC16_Calculate(u8 *aStr , u8 alen);
 extern int LoadModbusReg(void);
 
 extern int Radio_Send(int fd, char *send_buf, int data_len, int delay_ms); 
-extern void Radio_Send_Task(void);
 extern void SaveModbusReg_Task(void);
+extern int RADIO_UART_TRANS_Task(int fd);  
 
 #endif
 

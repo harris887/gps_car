@@ -9,6 +9,7 @@
 #include "uart.h"
 #include "config.h"
 #include <unistd.h>
+#include "vehicle.h"
 
 #define DEFAULT_min_distance_switch_line 3.0
 //MODULE_CORE_PARAM* MODULE_CORE_Param = NULL;
@@ -258,7 +259,7 @@ void MODULE_CORE_Task(MODULE_CORE_PARAM* param, GPSINFO* gps, int fd_car, FILE* 
       VEHICLE_Reset(param);
       
       usleep(1000 * 100); //wait 100ms
-      SetMotoSpeed(fd_car, 0, 0);
+      SetMotoSpeedAsync(0, 0);
       printf("VEHICLE Force Stop ! times = %d\r\n", ++FStopNum);
       pro = 0;
     }
@@ -289,12 +290,12 @@ void MODULE_CORE_Task(MODULE_CORE_PARAM* param, GPSINFO* gps, int fd_car, FILE* 
       test_control_bk = MOD_BUS_Reg.VEHICLE_TEST_CONTROL;
       if(test_control_bk) 
       {
-        SetMotoSpeed(fd_car, 100, 100); //mm/s
+        SetMotoSpeedAsync(100, 100); //mm/s
         printf("\r\ntest vehicle forward , 100 mm/s fixed \r\n");
       }
       else
       {
-        SetMotoSpeed(fd_car, 0, 0);   
+        SetMotoSpeedAsync(0, 0);   
         printf("\r\ntest vehicle stop ! \r\n");
       }
     }
@@ -479,7 +480,7 @@ int VEHICLE_Run(MODULE_CORE_PARAM * param, GPSINFO* gps, int fd_car, FILE* log)
       param->left_speed = 0;
       param->right_speed = 0;
       param->error_flag = 1;
-      SetMotoSpeed(fd_car, param->left_speed * 1000.0d, param->right_speed * 1000.0d);
+      SetMotoSpeedAsync(param->left_speed * 1000.0d, param->right_speed * 1000.0d);
       ret = -1;
 
       counter = 0;
@@ -510,7 +511,7 @@ int VEHICLE_Run(MODULE_CORE_PARAM * param, GPSINFO* gps, int fd_car, FILE* log)
       param->right_speed = 0;
       ret = -1;
       printf("zero_speed last %lfs, run_distance = %lf \r\n", (double)zero_speed_counter * control_cycle, param->run_distance);
-      SetMotoSpeed(fd_car, param->left_speed * 1000.0d, param->right_speed * 1000.0d);
+      SetMotoSpeedAsync(param->left_speed * 1000.0d, param->right_speed * 1000.0d);
 
       counter = 0;
       zero_speed_counter = 0;
@@ -559,7 +560,7 @@ int VEHICLE_Run(MODULE_CORE_PARAM * param, GPSINFO* gps, int fd_car, FILE* log)
         (param->left_speed > param->right_speed)?'R':'L', fabs(distance), param->run_distance);
     }
 
-    SetMotoSpeed(fd_car, param->left_speed * 1000.0d, param->right_speed * 1000.0d);
+    SetMotoSpeedAsync(param->left_speed * 1000.0d, param->right_speed * 1000.0d);
 
     if(log != NULL)
     {

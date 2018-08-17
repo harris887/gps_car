@@ -1,7 +1,15 @@
+#include <stdio.h>      /*标准输入输出定义*/  
+#include <stdlib.h>     /*标准函数库定义*/  
+#include <unistd.h>     /*Unix 标准函数定义*/  
+#include <sys/types.h>   
+#include <sys/stat.h>     
+#include <fcntl.h>      /*文件控制定义*/  
+#include <termios.h>    /*PPSIX 终端控制定义*/  
+#include <errno.h>      /*错误号定义*/  
+#include <string.h>  
+#include "stdbool.h"
 #include "modbus.h"
 #include "uart.h"
-#include "string.h"
-#include "stdio.h"
 #include "misc.h"
 #include "module_core.h"
 
@@ -648,16 +656,53 @@ int Radio_Send(int fd, char *send_buf, int data_len, int delay_ms)
 
 void Radio_Send_Task(void)
 {
+
+}
+
+//---- radio rx & tx ----//
+int RADIO_UART_TRANS_Task(int fd)  
+{  
+  static s64 time_bk = 0;
+  static s64 last_rx_timestamp = 0;
+  s64 time;
+  int i;
+  if(fd == 0) return -1;  
+
+  time = GetCurrentTimeMs();
+  if(time_bk != time);
+  {
+    char temp_buf[128];
+    int temp_len;
+    time_bk = time;
+    temp_len = read(fd, temp_buf, 128); 
+    if(temp_len > 0)
+    {
+      last_rx_timestamp = time;
+      for(i = 0; i < temp_len; i++)
+        Analysis_Receive_From_Master(temp_buf[i], &MODBUS_Radio, &MOD_BUS_Reg, fd);
+    }
+    //---- 接收超时处理 ----//
+    if(time >= (last_rx_timestamp + 100)) //50 -> 100, 20180617, big pakage
+    {
+      if(MODBUS_Radio.machine_state != 0)
+      {
+        MODBUS_Radio.machine_state = 0;
+        printf("Reset MODBUS_Radio.machine_state once !\r\n");
+      }
+    }
+  }
+
+  // -- radio tx --//
   if(RADIO_INFOR_CONTENT_LIST_InIndex != RADIO_INFOR_CONTENT_LIST_OutIndex)
   {
     RADIO_INFOR_CONTENT* pRADIO_INFOR_CONTENT = RADIO_INFOR_CONTENT_List + RADIO_INFOR_CONTENT_LIST_OutIndex;
     if((pRADIO_INFOR_CONTENT->timestamp + pRADIO_INFOR_CONTENT->delay_ms) <= GetCurrentTimeMs())
     {
-      UART0_Send(pRADIO_INFOR_CONTENT->fd, (char*)pRADIO_INFOR_CONTENT->data, pRADIO_INFOR_CONTENT->data_len);
+      UART0_Send(fd, (char*)pRADIO_INFOR_CONTENT->data, pRADIO_INFOR_CONTENT->data_len); // pRADIO_INFOR_CONTENT->fd
       RADIO_INFOR_CONTENT_LIST_OutIndex += 1;  
       RADIO_INFOR_CONTENT_LIST_OutIndex &= (RADIO_INFOR_CONTENT_LIST_NUM_MASK);
     }
   }
+	return 0; 
 }
-
 

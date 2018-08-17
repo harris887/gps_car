@@ -347,7 +347,7 @@ int UART0_Send(int fd, char *send_buf,int data_len)
 }  
 
 //---- 串口接收任务 ----//
-int UART0_RX_Task(int fd)  
+int NMEA_RX_Task(int fd)  
 {  
 #if (!BLOCK_STOP_MODE)
   static s64 time_bk = 0;
@@ -398,90 +398,22 @@ int UART0_RX_Task(int fd)
     {
       
     }
+
+    //---- parse NMEA ----//
+    for(i=0;i<NMEA_R_BUF_LEN;i++)
+    {
+      if(NMEA_R_BUF[i].Flag==2)
+      {
+        NMEA_parse(NMEA_R_BUF[i].BUF);
+        NMEA_R_BUF[i].Flag=0;
+      }
+    }
   }
   #endif
 	return 0; 
 }
 
-//---- modbus接收 ----//
-int MODBUS_UART_RX_Task(int fd)  
-{  
-  static s64 time_bk = 0;
-  static s64 last_rx_timestamp = 0;
-  s64 time;
-  int i;
-  if(fd == 0) return -1;  
 
-  time = GetCurrentTimeMs();
-  if(time_bk != time);
-  {
-    char temp_buf[128];
-    int temp_len;
-    time_bk = time;
-    temp_len = read(fd, temp_buf, 128); 
-    if(temp_len > 0)
-    {
-      last_rx_timestamp = time;
-      for(i = 0; i < temp_len; i++)
-        Analysis_Receive_From_Master(temp_buf[i], &MODBUS_Radio, &MOD_BUS_Reg, fd);
-    }
-    //---- 接收超时处理 ----//
-    if(time >= (last_rx_timestamp + 100)) //50 -> 100, 20180617, big pakage
-    {
-      if(MODBUS_Radio.machine_state != 0)
-      {
-        MODBUS_Radio.machine_state = 0;
-        printf("Reset MODBUS_Radio.machine_state once !\r\n");
-      }
-    }
-  }
-	return 0; 
-}
-
-const char CMD_SET_MOTO_SPEED[] = 
-{0x01 ,0x16 ,0x00 ,0x38 ,0x00 ,0x08 ,
- 0x00 ,0x00 ,0x00 ,0x64 ,//左前轮
- 0x00 ,0x00 ,0x00 ,0x00 ,//右前轮
- 0x00 ,0x00 ,0x00 ,0x00 ,//左后轮
- 0x00 ,0x00 ,0x00 ,0x00 ,//右后轮
- 0x5A ,0xB3 };
-
-
-void SetMotoSpeed(int fd_car, int left, int right)
-{
-  char cmd_buf[256];
-  char offset = 8;
-  unsigned short cal_crc;
-  memcpy(cmd_buf, CMD_SET_MOTO_SPEED, sizeof(CMD_SET_MOTO_SPEED));
-  if(left < 0) 
-  {  
-    cmd_buf[7] = 1;
-    cmd_buf[7+offset] = 1;
-    left = -left;
-  }
-  if(right < 0) 
-  {  
-    cmd_buf[11] = 1;
-    cmd_buf[11+offset] = 1;
-    right = -right;
-  }
-  cmd_buf[8] = (left >> 8) & 0xFF;
-  cmd_buf[9] = (left >> 0) & 0xFF;
-  cmd_buf[8+offset] = (left >> 8) & 0xFF;
-  cmd_buf[9+offset] = (left >> 0) & 0xFF;
-
-  cmd_buf[12] = (right >> 8) & 0xFF;
-  cmd_buf[13] = (right >> 0) & 0xFF;
-  cmd_buf[12+offset] = (right >> 8) & 0xFF;
-  cmd_buf[13+offset] = (right >> 0) & 0xFF;
-
-  cal_crc = ModBus_CRC16_Calculate((u8*)cmd_buf , sizeof(CMD_SET_MOTO_SPEED) - 2);
-  cmd_buf[22] = cal_crc&0xFF;
-  cmd_buf[23] = cal_crc>>8;   
-
-  if(fd_car)
-    UART0_Send(fd_car, cmd_buf, sizeof(CMD_SET_MOTO_SPEED));
-}
 
 char get_char(void)
 {
