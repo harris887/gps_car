@@ -14,7 +14,7 @@
 
 #define VEHICLE_COMM_RX_TIMEOUT 5 
 #define VEHICLE_COMM_CYCLE_MS   10
-#define VEHICLE_READ_INFOR_MS   500
+#define VEHICLE_READ_INFOR_MS   1000
 #define VEHICLE_READ_DIDO_MASK  0x1
 #define VEHICLE_READ_BMS_MASK   0x2
 
@@ -36,6 +36,7 @@ DIDO_INFOR DIDO_Infor =
 BMS_INFOR BMS_Infor = 
 {
   .Valid = 0,
+  .Num = 0,
 };
 
 int VEHICLE_READ_INFOR_Flag = 0;
@@ -198,25 +199,40 @@ void Analysis_Receive_From_Vehicle(u8 data, MODBUS_SAMPLE* pMODBUS)
             if(pMODBUS->Read_Register_Num == 14)
             {
               u8* info = pMODBUS->DataBuf + 4, i;
+ 
               DIDO_Infor.DAM0808_Input = (info[0] << 8) | info[1];
               DIDO_Infor.DAM0808_Output = (info[2] << 8) | info[3];
               for(i = 0; i < 4; i++) DIDO_Infor.DAM0404_Input[i] = (info[4 + 2 * i] << 8) | info[5 + 2 * i];
               DIDO_Infor.DAM0404_Output = (info[12] << 8) | info[13];
               DIDO_Infor.ReadNum += 1;
+              
+              // -- To Radio Server --//
+              for(i = 0; i < 4; i++) MOD_BUS_Reg.MOTO_CURRENT[i] = DIDO_Infor.DAM0404_Input[i];
+              MOD_BUS_Reg.DIDO_DI8 = DIDO_Infor.DAM0808_Input;
+              MOD_BUS_Reg.DIDO_DO12 = DIDO_Infor.DAM0808_Output | ((DIDO_Infor.DAM0404_Output & 0xF) << 8);
+
             }
             else if(pMODBUS->Read_Register_Num == 32)
             {
               u8 *bs = pMODBUS->DataBuf + 4, i;
               BMS_INFOR* bms = &BMS_Infor;
+
               bms->BAT_MV = Get_BD_U32(&bs);
               bms->BAT_MA = Get_BD_U32(&bs);
-              for(i = 0; i < 3; i++)  bms->BAT_TEMP[i] = Get_BD_U16(&bs);;
+              for(i = 0; i < 3; i++)  bms->BAT_TEMP[i] = Get_BD_U16(&bs);
               bms->FCC = Get_BD_U32(&bs);;
               bms->RC = Get_BD_U32(&bs);;
               bms->RSOC = Get_BD_U16(&bs);
               bms->CycleCount = Get_BD_U16(&bs);
               bms->PackStatus = Get_BD_U16(&bs);
               bms->BatStatus = Get_BD_U16(&bs);
+              bms->Valid = Get_BD_U16(&bs);
+              bms->Num += 1;
+
+              // -- To Radio Server --//
+              u16* dst = MOD_BUS_Reg.BMS_MV;
+              u8* src = pMODBUS->DataBuf + 4;
+              for(i = 0; i < 15; i++) *dst++ = Get_BD_U16(&src); // 15 * HalfWord
             }
             else
             {
@@ -323,16 +339,54 @@ void SetMotoSpeedAsync(int left, int right)
 u16 Get_BD_U16(u8** beam) 
 {
   u16 temp;
-  temp = (*beam[0] << 8) | (*beam[1] << 0);
-  *beam += 2;
+  u8* c = *beam;
+  temp = ((u16)c[0] << 8) | ((u16)c[1] << 0);
+  *beam = c + 2;
   return temp;
 }
 
 u32 Get_BD_U32(u8** beam) 
 {
   u32 temp;
-  temp = ((u32)*beam[0] << 24) | ((u32)*beam[1] << 16) | ((u32)*beam[2] << 8) | ((u32)*beam[3] << 0);
-  *beam += 4;
+  u8* c = *beam;
+  temp = ((u32)c[0] << 24) | ((u32)c[1] << 16) | ((u32)c[2] << 8) | ((u32)c[3] << 0);
+  *beam = c + 4;
   return temp;
+}
+
+void PrintBmsInfor(void)
+{
+  printf("\r\n---------------------------\r\n");
+  printf("----------- BMS -----------\r\n");
+  printf("BAT_MV    : %d\r\n", BMS_Infor.BAT_MV);
+  printf("BAT_MA    : %d\r\n", BMS_Infor.BAT_MA);
+  printf("BAT_TEMP  : %d\r\n", BMS_Infor.BAT_TEMP[0]);
+  printf("BAT_TEMP  : %d\r\n", BMS_Infor.BAT_TEMP[1]);
+  printf("BAT_TEMP  : %d\r\n", BMS_Infor.BAT_TEMP[2]);
+  printf("FCC       : %d\r\n", BMS_Infor.FCC);
+  printf("RC        : %d\r\n", BMS_Infor.RC);  
+  printf("RSOC      : %d\r\n", BMS_Infor.RSOC); 
+
+  printf("CycleCount: %d  \r\n", BMS_Infor.CycleCount);
+  printf("PackStatus: %04X\r\n", BMS_Infor.PackStatus);  
+  printf("BatStatus : %04X\r\n", BMS_Infor.BatStatus); 
+  printf("Valid     : %d  \r\n", BMS_Infor.Valid);  
+  printf("Num       : %d  \r\n", BMS_Infor.Num); 
+  printf("---------------------------\r\n");
+}
+
+void PrintDidoInfor(void)
+{
+  printf("\r\n------------------------------\r\n");
+  printf("------------ DIDO ------------\r\n");
+  printf("DAM0808_Input    : %04X\r\n", DIDO_Infor.DAM0808_Input);
+  printf("DAM0808_Output   : %04X\r\n", DIDO_Infor.DAM0808_Output);
+  printf("DAM0404_Input_0  : %04X\r\n", DIDO_Infor.DAM0404_Input[0]);
+  printf("DAM0404_Input_1  : %04X\r\n", DIDO_Infor.DAM0404_Input[1]);
+  printf("DAM0404_Input_2  : %04X\r\n", DIDO_Infor.DAM0404_Input[2]);
+  printf("DAM0404_Input_3  : %04X\r\n", DIDO_Infor.DAM0404_Input[3]);
+  printf("DAM0404_Output   : %04X\r\n", DIDO_Infor.DAM0404_Output);  
+  printf("ReadNum          : %d  \r\n", DIDO_Infor.ReadNum); 
+  printf("------------------------------\r\n");
 }
 

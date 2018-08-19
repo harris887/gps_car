@@ -144,7 +144,7 @@ int main(int argc, char **argv)
   printf("\n---- main loop ----\n");
 #if (SIMULATE_ENABLE) 
 #else
-  printf("second  latitude  longitude altitude FixMode0 Yaw FixMode1 SVsInUse GGA AVR\n");
+  printf("second  latitude  longitude altitude FixMode0 Yaw FixMode1 SVsInUse GGA AVR BAT_V BAT_A\n");
 #endif
   DEMO_01_PARAM* demo_01 = NULL;
   DEMO_02_PARAM* demo_02 = NULL;
@@ -177,8 +177,8 @@ int main(int argc, char **argv)
       sec_bk = system_time_in_sec;
       //printf("second = %d \n", sec_bk);
       if(pro < 2)
-        printf("\r%d  [ %lf %lf %f %d ] [ %f %d ] [ %d ]  [ %d  %d ]", sec_bk, gps.latitude_InM, gps.longitude_InM, gps.altitude, gps.FixMode, \
-          gps.Yaw, gps.AVR_FixMode, gps.usedsatnum, gps.GGA_Num, gps.PTNL_AVR_Num);
+        printf("\r%d  [ %lf %lf %f %d ] [ %f %d ] [ %d ]  [ %d  %d ] [%.3fV %.3fA]", sec_bk, gps.latitude_InM, gps.longitude_InM, gps.altitude, gps.FixMode, \
+          gps.Yaw, gps.AVR_FixMode, gps.usedsatnum, gps.GGA_Num, gps.PTNL_AVR_Num, (float)BMS_Infor.BAT_MV * 0.001, (float)(*(int*)(&BMS_Infor.BAT_MA)) * 0.001);
       fflush(stdout);
     }
 #endif
@@ -191,6 +191,12 @@ int main(int argc, char **argv)
       {
         system(STTY_DEF TTY_PATH);
         return 0;
+      }
+      break;
+    case 'M':
+      {
+        PrintDidoInfor();
+        PrintBmsInfor();
       }
       break;
     case 'S':

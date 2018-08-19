@@ -35,6 +35,8 @@ const MOD_BUS_REG DEFAULT_MOD_BUS_Reg=
   .VEHICLE_STATUS = 0x0F0F, //
   .BATT_VOLT = 480,
   .MOTO_CURRENT = {0, 10, 20, 30},
+  .DIDO_DI8 = 0,
+  .DIDO_DO12 = 0,
 
   //-- 0x50 ~ 0x1FF--//
   .VEHICLE_LOCATION_X = {0xFFFF, 0XFFF0}, //-16

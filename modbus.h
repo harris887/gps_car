@@ -63,9 +63,11 @@ typedef struct
   u16 BATT_VOLT;
   u16 rsv_004[6];
   u16 MOTO_CURRENT[4];
-  u16 rsv_005[4];
+  u16 DIDO_DI8;
+  u16 DIDO_DO12;
+  u16 rsv_005[2];
 
-  //-- 0x50 ~ 0x1FF--//
+  //-- 0x50 ~ 0x7F--//
   u16 VEHICLE_LOCATION_X[2]; //--
   u16 VEHICLE_LOCATION_Y[2]; //--
   s16 VEHICLE_LOCATION_YAW;
@@ -76,7 +78,18 @@ typedef struct
   u16 VEHICLE_YAW[2];
   u16 GPS_LOCATION_QUALITY;
   u16 GPS_YAW_QUALITY;
-  u16 rsv_006[412];
+  u16 rsv_006[28];
+
+  //-- 0x80 ~ 0x1FF--//  
+  u16 BMS_MV[2];
+  u16 BMS_MA[2];
+  u16 BMS_TEMP[3];
+  u16 BMS_FCC[2];
+  u16 BMS_RC[3];
+  u16 BMS_CycleCount;
+  u16 BMS_PackStatus;
+  u16 BMS_BatStatus;
+  u16 rsv_009[369];
 
   //-- 0x200 ~ 0x21F--//
   u16 MAP_NUM;

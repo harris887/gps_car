@@ -23,6 +23,7 @@ typedef struct
   u16 PackStatus;
   u16 BatStatus;
   u16 Valid;
+  u32 Num;
 }BMS_INFOR;
 
 typedef struct 
@@ -51,5 +52,7 @@ extern BMS_INFOR BMS_Infor;
 
 void SetMotoSpeedAsync(int left, int right);
 int VEHICLE_UART_TRANS_Task(int fd);
+void PrintBmsInfor(void);
+void PrintDidoInfor(void);
 #endif
 
