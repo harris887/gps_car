@@ -10,11 +10,13 @@
 #include "config.h"
 #include <unistd.h>
 #include "vehicle.h"
+#include "demo_10.h"
 
 #define DEFAULT_min_distance_switch_line 3.0
 //MODULE_CORE_PARAM* MODULE_CORE_Param = NULL;
 int init_COORDINATE_flag = 1;
 int init_ROAD_MAP_flag = 1;
+point_list* pl_global = NULL;
 
 MODULE_CORE_PARAM* MODULE_CORE_Init(FILE* log)
 {
@@ -23,31 +25,8 @@ MODULE_CORE_PARAM* MODULE_CORE_Init(FILE* log)
   {
     memset(param, 0, sizeof(MODULE_CORE_PARAM));
 
-    double speed_limit = 0.5;
-    /*
-    double line_start_x = 0.0, line_start_y = 0.0;
-    COORDINATE_PARAM* coo_base = Coordinate_Init(lati_m[0], longti_m[0]);
-    COORDINATE* point = (COORDINATE*) malloc(sizeof(COORDINATE));
-    demo->line = (LINE_SEGMENT_PP_PARAM**) malloc(sizeof(LINE_SEGMENT_PP_PARAM*) * line_num);
-    demo->line_num = line_num;
-    // 生成 [num_point - 1] 条直线
-    for(int i = 0; i < line_num; i++)
-    {
-      Get_Coordinate(point, lati_m[i + 1], longti_m[i + 1], 0.0, coo_base);
-      LINE_SEGMENT_PP_PARAM* line = Creat_LineSegmentPP(line_start_x, line_start_y, point->x, point->y, speed_limit);
-      demo->line[i] = line;
-      line_start_x = point->x;
-      line_start_y = point->y;
-    }
-    point->x = 0.0;
-    point->y = 0.0;
-    point->direction = 0.0;
-    demo->coo = coo_base;
-    demo->current_location = point;
-    demo->cur_line_index = 0;
-    */
-
     //
+    param->ref_point_ahead_num = 20;
     param->max_wheel_speed = MAX_WHEEL_SPEED_MMS * 0.001; 
     param->left_speed = 0;
     param->right_speed = 0;
@@ -87,6 +66,7 @@ MODULE_CORE_PARAM* MODULE_CORE_Init(FILE* log)
     if(log != NULL)
     {
       fprintf(log, "cur_x \t cur_y \t cur_yaw \t line_x \t line_y \t line_yaw \t l_speed \t r_speed \n");
+      fflush(log);
     }
 
   }
@@ -144,10 +124,83 @@ void MODULE_CORE_Task(MODULE_CORE_PARAM* param, GPSINFO* gps, int fd_car, FILE* 
         {
           if((map->Point_Num >= 2) && (map->Point_Num <= 128))
           {
-            COORDINATE_PARAM* coo_base = param->coo;
-
             if(param->coo != NULL)
             {
+#if (1) // 短线段模型
+              if(pl_global) 
+              {
+                if(pl_global->list) free(pl_global->list);
+                free(pl_global);
+                pl_global = NULL;
+              }
+              if(param->current_location != NULL) 
+              {
+                free(param->current_location);
+                param->current_location = NULL;
+              }
+              unsigned int temp;
+              int x_cm, y_cm;
+              //double speed_limit = 0.5;
+              COORDINATE* point_location = (COORDINATE*) malloc(sizeof(COORDINATE));
+              int line_num = map->Point_Num - 1, i;
+                
+              temp = (((unsigned int)map->Point_Coordinate_XY[0][0] << 16) | (unsigned int)map->Point_Coordinate_XY[0][1]);
+              x_cm = *(int*)&temp;
+              temp = (((unsigned int)map->Point_Coordinate_XY[0][2] << 16) | (unsigned int)map->Point_Coordinate_XY[0][3]);
+              y_cm = *(int*)&temp;
+              double line_start_x = x_cm * 0.01, line_start_y = y_cm * 0.01;
+              param->line = (LINE_SEGMENT_PP_PARAM**) malloc(sizeof(LINE_SEGMENT_PP_PARAM*) * line_num);
+              param->line_num = line_num;
+
+              COORDINATE current_location_0;
+              Get_Coordinate(&current_location_0, gps->latitude_InM_RTK_Fixed, gps->longitude_InM_RTK_Fixed, gps->Yaw_RTK_Fixed, param->coo);
+              double distance_for_start = sqrt((current_location_0.x - line_start_x) * (current_location_0.x - line_start_x) 
+                 + (current_location_0.y - line_start_y) * (current_location_0.y - line_start_y));
+              if(distance_for_start > 3.0) 
+                  printf("error code 10005, Distance lager than 3.0 meter\r\n");
+
+              point_list* pl;
+              pl = (point_list*) malloc(sizeof(point_list));
+              pl->list = (point*) malloc(sizeof(point) * map->Point_Num);
+              pl->point_num = map->Point_Num;
+              for(i = 0; i < map->Point_Num; i++)
+              {
+                float x,y;
+                temp = (((unsigned int)map->Point_Coordinate_XY[i][0] << 16) | (unsigned int)map->Point_Coordinate_XY[i][1]);
+                x_cm = *(int*)&temp;
+                temp = (((unsigned int)map->Point_Coordinate_XY[i][2] << 16) | (unsigned int)map->Point_Coordinate_XY[i][3]);
+                y_cm = *(int*)&temp;
+                x = x_cm * 0.01;
+                y = y_cm * 0.01;
+
+                pl->list[i].x = x;
+                pl->list[i].y = y;
+              }
+              seg_list* sl = points_2_segment(pl, MAX_WHEEL_SPEED_MMS * 0.001, MAX_WHEEL_ACCELERATION_MMSS * 0.001, 0.1);
+              Print_seg_list(sl);
+              pl_global = segment_rebuild_with_speed(sl, MAX_WHEEL_ACCELERATION_MMSS * 0.001, 0.1);
+              Save_PointFile(pl_global);
+
+              if(sl) 
+              {
+                if(sl->list) free(sl->list);
+                free(sl);
+              }
+              if(pl) 
+              {
+                if(pl->list) free(pl->list);
+                free(pl);
+              }
+
+              point_location->x = 0.0;
+              point_location->y = 0.0;
+              point_location->direction = 0.0;
+              param->current_location = point_location;
+              param->cur_line_index = 0;
+              param->cur_ref_index = 0;
+              pro = 1;
+
+#else   // 长直线模型
               // release first
               if(param->line != NULL)
               {
@@ -181,14 +234,14 @@ void MODULE_CORE_Task(MODULE_CORE_PARAM* param, GPSINFO* gps, int fd_car, FILE* 
                 double line_start_x = x_cm * 0.01, line_start_y = y_cm * 0.01;
                 param->line = (LINE_SEGMENT_PP_PARAM**) malloc(sizeof(LINE_SEGMENT_PP_PARAM*) * line_num);
                 param->line_num = line_num;
-#if (1)
+
                 COORDINATE current_location_0;
                 Get_Coordinate(&current_location_0, gps->latitude_InM_RTK_Fixed, gps->longitude_InM_RTK_Fixed, gps->Yaw_RTK_Fixed, param->coo);
                 double distance_for_start = sqrt((current_location_0.x - line_start_x) * (current_location_0.x - line_start_x) 
                    + (current_location_0.y - line_start_y) * (current_location_0.y - line_start_y));
                 if(distance_for_start > 3.0) 
                   printf("error code 10005, Distance lager than 3.0 meter\r\n");
-#endif
+
                 printf("\r\n\r\n---------------- create %03d lines ----------------\r\n", line_num);
                 for(i = 0; i < line_num; i++)
                 {
@@ -212,8 +265,8 @@ void MODULE_CORE_Task(MODULE_CORE_PARAM* param, GPSINFO* gps, int fd_car, FILE* 
                 param->current_location = point;
                 param->cur_line_index = 0;
                 pro = 1;
-                
               }
+#endif
             }
             else
             {
@@ -243,7 +296,11 @@ void MODULE_CORE_Task(MODULE_CORE_PARAM* param, GPSINFO* gps, int fd_car, FILE* 
 
   if(pro == 1)
   {
+#if (1)
+    int ret = VEHICLE_10_Run(param, pl_global, gps, fd_car, log);
+#else
     int ret = VEHICLE_Run(param, gps, fd_car, log);
+#endif
     if (ret < 0) 
     {
 

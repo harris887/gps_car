@@ -43,6 +43,7 @@ int VEHICLE_READ_INFOR_Flag = 0;
 int VEHICLE_SET_SPEED_Flag = 0;
 int VEHICLE_SPEED_left = 0;
 int VEHICLE_SPEED_right = 0;
+int VEHICLE_RX_ErrorNum = 0;
 
 void Analysis_Receive_From_Vehicle(u8 data, MODBUS_SAMPLE* pMODBUS);
 void SetMotoSpeed(int fd_car, int left, int right);
@@ -82,7 +83,8 @@ int VEHICLE_UART_TRANS_Task(int fd)
       if(MODBUS_Vehicle.MachineState != 0)
       {
         MODBUS_Vehicle.MachineState = 0;
-        printf("Reset MODBUS_Vehicle.MachineState once !\r\n");
+        VEHICLE_RX_ErrorNum += 1;
+        //printf("Reset MODBUS_Vehicle.MachineState once !\r\n");
       }
     }
   }

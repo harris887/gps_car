@@ -12,6 +12,8 @@ typedef struct
 
   int line_num;
   int cur_line_index;
+  int cur_ref_index;
+  int ref_point_ahead_num;
   //---------------//
   double max_wheel_speed; // unit:mm/s
   double left_speed;      // unit:mm/s
@@ -53,6 +55,7 @@ typedef struct
 
 //extern MODULE_CORE_PARAM* MODULE_CORE_Param;
 extern int init_COORDINATE_flag;
+extern int VEHICLE_RESET_Extern;
 
 extern MODULE_CORE_PARAM* MODULE_CORE_Init(FILE* log);
 extern void MODULE_CORE_Release(MODULE_CORE_PARAM* param);

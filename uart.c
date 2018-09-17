@@ -68,8 +68,9 @@ int UART0_Open(int fd,char* port)
  	#endif
  	  
 	//测试是否为终端设备      
-	if(0 == isatty(STDIN_FILENO))  
-	{  
+	//if(0 == isatty(STDIN_FILENO))  
+	if(0)
+        {  
 		printf("standard input is not a terminal device\n");  
 		return FALSE;  
 	}  

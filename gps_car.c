@@ -84,7 +84,16 @@ int main(int argc, char **argv)
 
   bd = 115200; //(argc>=5)?atoi(argv[4]):DEFAULT_UART_BD;
   comm_init_retry_num = 0;
+  
+  int t_delay = 0;
+  while(t_delay++ < 10)
+  {
+    sleep(1);
+    printf("sec %d\n", t_delay);
+  }
   fd_gps = UART0_Open(fd_gps,argv[gps_com]);                    //打开串口，返回文件描述符  
+  
+  
 	do
   {  
 		err = UART0_Init(fd_gps, bd, 0, 8, 1, 'N');  
@@ -177,8 +186,24 @@ int main(int argc, char **argv)
       sec_bk = system_time_in_sec;
       //printf("second = %d \n", sec_bk);
       if(pro < 2)
-        printf("\r%d  [ %lf %lf %f %d ] [ %f %d ] [ %d ]  [ %d  %d ] [%.3fV %.3fA]", sec_bk, gps.latitude_InM, gps.longitude_InM, gps.altitude, gps.FixMode, \
-          gps.Yaw, gps.AVR_FixMode, gps.usedsatnum, gps.GGA_Num, gps.PTNL_AVR_Num, (float)BMS_Infor.BAT_MV * 0.001, (float)(*(int*)(&BMS_Infor.BAT_MA)) * 0.001);
+      {
+#if(1)
+        printf("\r%d  [ %lf %lf %f %d ] [ %f %d ] [ %d ]  [ %d  %d ] [%.3fV %.3fA] [%.3fA %.3fA %.3fA %.3fA]", sec_bk, gps.latitude_InM, gps.longitude_InM, gps.altitude, gps.FixMode, \
+          gps.Yaw, gps.AVR_FixMode, gps.usedsatnum, gps.GGA_Num, gps.PTNL_AVR_Num, (float)BMS_Infor.BAT_MV * 0.001, (float)(*(int*)(&BMS_Infor.BAT_MA)) * 0.001, \
+          ((float)DIDO_Infor.DAM0404_Input[0] - 2470.0) / 50.0, \
+          ((float)DIDO_Infor.DAM0404_Input[1] - 2470.0) / 50.0, \
+          ((float)DIDO_Infor.DAM0404_Input[2] - 2470.0) / 50.0, \
+          ((float)DIDO_Infor.DAM0404_Input[3] - 2470.0) / 50.0);
+#else // read rpm_rate
+        printf("\r%d  [ %lf %lf %f %d ] [ %f %d ] [ %d ]  [ %d  %d ] [%.3fV %.3fA] [%d %d %d %d]", sec_bk, gps.latitude_InM, gps.longitude_InM, gps.altitude, gps.FixMode, \
+          gps.Yaw, gps.AVR_FixMode, gps.usedsatnum, gps.GGA_Num, gps.PTNL_AVR_Num, (float)BMS_Infor.BAT_MV * 0.001, (float)(*(int*)(&BMS_Infor.BAT_MA)) * 0.001, \
+          DIDO_Infor.DAM0404_Input[0], \
+          DIDO_Infor.DAM0404_Input[1], \
+          DIDO_Infor.DAM0404_Input[2], \
+          DIDO_Infor.DAM0404_Input[3]);
+#endif
+
+      }
       fflush(stdout);
     }
 #endif
@@ -193,6 +218,31 @@ int main(int argc, char **argv)
         return 0;
       }
       break;
+    case 'E':
+      {
+        printf("\r\nReset MODBUS_Vehicle.MachineState times %d !\r\n", VEHICLE_RX_ErrorNum);
+      }
+      break;
+    /*
+    case '0':
+      {
+        SetMotoSpeedAsync(0, 0);
+        printf("\r\n---- MOTO SPEED 0 ----\r\n ");
+      }
+      break;
+    case '2':
+      {
+        SetMotoSpeedAsync(20, 20);
+        printf("\r\n---- MOTO SPEED 20mm/s ----\r\n ");
+      }
+      break;
+    case '5':
+      {
+        SetMotoSpeedAsync(50, 50);
+        printf("\r\n---- MOTO SPEED 50mm/s ----\r\n ");
+      }
+      break;
+    */
     case 'M':
       {
         PrintDidoInfor();

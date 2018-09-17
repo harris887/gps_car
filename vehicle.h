@@ -48,11 +48,12 @@ typedef struct
 extern MODBUS_SAMPLE MODBUS_Vehicle;
 extern DIDO_INFOR DIDO_Infor;
 extern BMS_INFOR BMS_Infor;
-
+extern int VEHICLE_RX_ErrorNum;
 
 void SetMotoSpeedAsync(int left, int right);
 int VEHICLE_UART_TRANS_Task(int fd);
 void PrintBmsInfor(void);
 void PrintDidoInfor(void);
+
 #endif
 
